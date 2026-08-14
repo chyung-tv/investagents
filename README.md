@@ -11,6 +11,7 @@ cp .env.example .env
 # fill OPENROUTER_*, FINANCIAL_DATASETS_API_KEY, EXA_API_KEY
 # fill DATABASE_URL (Neon pooled) and DATABASE_URL_UNPOOLED (direct)
 # fill NEON_AUTH_BASE_URL and NEON_AUTH_COOKIE_SECRET (openssl rand -base64 32)
+# fill ADMIN_EMAILS (comma-separated). Empty means nobody can open /admin.
 ```
 
 GitHub OAuth is not required. Neon Auth is already enabled on this project (email/password plus shared Google). Localhost is allowed.
