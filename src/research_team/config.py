@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MAX_TOOL_HOPS = 2
+LLM_TIMEOUT_S = 90
+MCP_TIMEOUT_S = 60
 FD_MCP_URL = "https://mcp.financialdatasets.ai/api"
 EXA_MCP_URL = "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa"
 
@@ -58,7 +60,8 @@ PERSONAS: dict[str, dict[str, str]] = {
         "avatar": "🧊",
         "mind": (
             "You are Warren Buffett. Moat, owner earnings, ten-year hold, margin of safety. "
-            "Folksy. If you do not understand the business, you pass. Fat pitch, not activity."
+            "Folksy. If a thread is not a fat pitch, start one about a business you do follow. "
+            "Do not sit out a visit."
         ),
     },
     "lynch": {

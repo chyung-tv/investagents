@@ -247,6 +247,22 @@ async def forum_tools() -> list[BaseTool]:
     return [*(await gatherer_tools()), *(await debater_tools())]
 
 
+NEWS_TRUNCATE = 4000
+
+
+async def fetch_market_news() -> str:
+    """get_news with no ticker is the market feed. Fail-soft."""
+    try:
+        tools = await get_fd_tools({"get_news"})
+    except Exception as exc:  # noqa: BLE001
+        return f"(market news unavailable: {exc.__class__.__name__})"
+    if not tools:
+        return "(market news unavailable)"
+    raw = await run_tool(tools[0], {})
+    text = raw.strip() or "(no market news)"
+    return text[:NEWS_TRUNCATE]
+
+
 async def run_tool(tool: BaseTool, args: dict[str, Any]) -> str:
     """Invoke a tool; always return a string, never raise into the room."""
     try:

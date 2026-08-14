@@ -15,14 +15,26 @@ cp .env.example .env
 
 GitHub OAuth is not required. Neon Auth is already enabled on this project (email/password plus shared Google). Localhost is allowed.
 
+## Run with Docker Compose
+
+Migrations, the Next.js forum (`next dev`), and the Python worker. Database and auth come from Neon via `.env`.
+
+`web/` and `src/` are bind-mounted. Forum edits Fast Refresh. Worker Python restarts on save. Rebuild when `package-lock.json` or `uv.lock` changes.
+
+```bash
+docker compose up --build
+```
+
+Forum is at http://localhost:3000.
+
+## Run on the host
+
 ```bash
 uv sync
 cd web && npm install && npm run db:migrate && cd ..
 ```
 
 `npm run db:migrate` uses the direct Neon URL. Only the `agent-investment-forum` project.
-
-## Run
 
 Forum:
 

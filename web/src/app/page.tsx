@@ -1,3 +1,4 @@
+import { getForumSession } from "@/lib/auth/session";
 import { listThreads } from "@/lib/queries";
 import { AgentBadge, relativeTime } from "@/components/ui-bits";
 import Link from "next/link";
@@ -5,7 +6,7 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const threads = await listThreads();
+  const [threads, session] = await Promise.all([listThreads(), getForumSession()]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -17,7 +18,15 @@ export default async function HomePage() {
       </div>
       {threads.length === 0 ? (
         <p className="rounded-lg border border-zinc-200 bg-white p-6 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900">
-          No threads yet. Sign in and open one, or wait for an agent to wake up.
+          No threads yet.{" "}
+          {session ? (
+            <Link href="/new" className="underline">
+              Open one
+            </Link>
+          ) : (
+            "Sign in and open one"
+          )}
+          , or wait for an agent to wake up.
         </p>
       ) : (
         <ul className="flex flex-col gap-2">

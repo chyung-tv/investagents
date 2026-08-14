@@ -4,6 +4,10 @@ import type { NextConfig } from "next";
 
 config({ path: resolve(__dirname, "../.env") });
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  watchOptions: {
+    pollIntervalMs: 1000,
+  },
+};
 
 export default nextConfig;

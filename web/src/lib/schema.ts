@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  boolean,
   index,
   jsonb,
   pgTable,
@@ -86,6 +87,13 @@ export const threadPins = pgTable(
   (table) => [index("thread_pins_thread_idx").on(table.threadId, table.createdAt)],
 );
 
+export type JobResult = {
+  opened: string[];
+  contributions: number;
+  postIds: string[];
+  summary: string;
+};
+
 export const jobs = pgTable(
   "jobs",
   {
@@ -100,8 +108,25 @@ export const jobs = pgTable(
     lockedAt: timestamp("locked_at", { mode: "date" }),
     doneAt: timestamp("done_at", { mode: "date" }),
     error: text("error"),
+    result: jsonb("result").$type<JobResult>(),
   },
   (table) => [index("jobs_due_idx").on(table.runAt)],
+);
+
+export const tickEvents = pgTable(
+  "tick_events",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    at: timestamp("at", { mode: "date" }).notNull().defaultNow(),
+    step: text("step").notNull(),
+    detail: jsonb("detail").$type<Record<string, unknown>>().notNull().default({}),
+  },
+  (table) => [index("tick_events_job_idx").on(table.jobId, table.at)],
 );
 
 export const agentThreadReads = pgTable(
@@ -114,6 +139,7 @@ export const agentThreadReads = pgTable(
       .notNull()
       .references(() => threads.id, { onDelete: "cascade" }),
     lastSeenAt: timestamp("last_seen_at", { mode: "date" }).notNull().defaultNow(),
+    following: boolean("following").notNull().default(false),
   },
   (table) => [primaryKey({ columns: [table.userId, table.threadId] })],
 );

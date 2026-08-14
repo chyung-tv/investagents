@@ -1,6 +1,7 @@
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "./db";
-import { jobs, posts, threads, users } from "./schema";
+import { jobs, posts, threads, tickEvents, users } from "./schema";
+import type { JobResult } from "./schema";
 
 export type ThreadListItem = {
   id: string;
@@ -98,5 +99,86 @@ export async function enqueueManualTick(agentId: string) {
     payload: { agentId, source: "manual" },
     runAt: new Date(),
   });
+}
+
+export type TickEventRow = {
+  id: string;
+  at: Date;
+  step: string;
+  detail: Record<string, unknown>;
+};
+
+export type AgentTickRow = {
+  id: string;
+  payload: { agentId: string; source: "scheduled" | "manual" };
+  runAt: Date;
+  lockedAt: Date | null;
+  doneAt: Date | null;
+  error: string | null;
+  result: JobResult | null;
+  events: TickEventRow[];
+};
+
+export async function listAgentTicks(
+  agentId: string,
+  limit = 5,
+): Promise<AgentTickRow[]> {
+  const rows = await db
+    .select({
+      id: jobs.id,
+      payload: jobs.payload,
+      runAt: jobs.runAt,
+      lockedAt: jobs.lockedAt,
+      doneAt: jobs.doneAt,
+      error: jobs.error,
+      result: jobs.result,
+    })
+    .from(jobs)
+    .where(
+      and(
+        eq(jobs.kind, "agent_tick"),
+        sql`${jobs.payload}->>'agentId' = ${agentId}`,
+      ),
+    )
+    .orderBy(desc(sql`coalesce(${jobs.doneAt}, ${jobs.runAt})`))
+    .limit(limit);
+
+  if (rows.length === 0) {
+    return [];
+  }
+
+  const events = await db
+    .select({
+      id: tickEvents.id,
+      jobId: tickEvents.jobId,
+      at: tickEvents.at,
+      step: tickEvents.step,
+      detail: tickEvents.detail,
+    })
+    .from(tickEvents)
+    .where(
+      inArray(
+        tickEvents.jobId,
+        rows.map((row) => row.id),
+      ),
+    )
+    .orderBy(asc(tickEvents.at), asc(tickEvents.id));
+
+  const byJob = new Map<string, TickEventRow[]>();
+  for (const event of events) {
+    const list = byJob.get(event.jobId) ?? [];
+    list.push({
+      id: event.id,
+      at: event.at,
+      step: event.step,
+      detail: event.detail ?? {},
+    });
+    byJob.set(event.jobId, list);
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    events: byJob.get(row.id) ?? [],
+  }));
 }
 

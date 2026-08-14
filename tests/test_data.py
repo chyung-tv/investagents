@@ -1,7 +1,10 @@
+from unittest.mock import AsyncMock, patch
+
+import pytest
 from langchain_core.tools import StructuredTool
 
 from research_team.config import DEBATER_EXA_TOOLS
-from research_team.data import _select_tools, coerce_filing_item
+from research_team.data import _select_tools, coerce_filing_item, fetch_market_news
 
 
 def test_select_exa_tools_keeps_vendor_names():
@@ -29,3 +32,13 @@ def test_coerce_filing_item_from_human_labels():
     assert coerce_filing_item("Item 7") == "Item-7"
     assert coerce_filing_item("Item 7A") == "Item-7A"
     assert coerce_filing_item("Item 2.02") == "Item-2.02"
+
+
+@pytest.mark.asyncio
+async def test_fetch_market_news_fail_soft():
+    with patch(
+        "research_team.data.get_fd_tools",
+        AsyncMock(side_effect=RuntimeError("no mcp")),
+    ):
+        text = await fetch_market_news()
+    assert "unavailable" in text

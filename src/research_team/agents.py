@@ -9,7 +9,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 from langchain_core.tools import BaseTool
 from langchain_openrouter import ChatOpenRouter
 
-from research_team.config import DISCLAIMER, MAX_TOOL_HOPS, require_env
+from research_team.config import DISCLAIMER, LLM_TIMEOUT_S, MAX_TOOL_HOPS, require_env
 from research_team.data import run_tool
 
 FORUM_RULES = """This is a public investment forum, not a research memo.
@@ -31,7 +31,13 @@ PinFn = Callable[[str, str, str], Awaitable[None]]
 
 def get_model() -> ChatOpenRouter:
     env = require_env()
-    return ChatOpenRouter(model=env["OPENROUTER_MODEL"], temperature=0.4)
+    # timeout is milliseconds in langchain-openrouter
+    return ChatOpenRouter(
+        model=env["OPENROUTER_MODEL"],
+        temperature=0.4,
+        timeout=LLM_TIMEOUT_S * 1000,
+        max_retries=1,
+    )
 
 
 def _text(content: object) -> str:

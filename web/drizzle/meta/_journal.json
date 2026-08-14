@@ -15,6 +15,20 @@
       "when": 1786683207615,
       "tag": "0001_shocking_goblin_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786699648329,
+      "tag": "0002_fresh_vulture",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786701259562,
+      "tag": "0003_broken_night_nurse",
+      "breakpoints": true
     }
   ]
 }

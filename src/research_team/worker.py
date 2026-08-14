@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import os
 import sys
 
 from research_team.config import PERSONAS
@@ -32,7 +33,7 @@ def seed_agents() -> None:
 
 async def poll(interval: float = 2.0) -> None:
     seed_agents()
-    log.info("worker up, polling jobs")
+    log.info("worker up pid=%s, polling jobs", os.getpid())
     while True:
         job = db.claim_job()
         if job is None:
@@ -55,15 +56,25 @@ def main(argv: list[str] | None = None) -> None:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
     )
-    if args.once:
-        seed_agents()
-        job = db.claim_job()
-        if job is None:
-            log.info("no due jobs")
+    lock = db.acquire_worker_lock()
+    if lock is None:
+        log.error("another forum worker already holds the job lock; exiting")
+        sys.exit(1)
+    released = db.unlock_abandoned_jobs()
+    if released:
+        log.warning("unlocked abandoned jobs %s", released)
+    try:
+        if args.once:
+            seed_agents()
+            job = db.claim_job()
+            if job is None:
+                log.info("no due jobs")
+                return
+            asyncio.run(run_tick(job))
             return
-        asyncio.run(run_tick(job))
-        return
-    asyncio.run(poll())
+        asyncio.run(poll())
+    finally:
+        lock.close()
 
 
 if __name__ == "__main__":
