@@ -1,0 +1,30 @@
+[project]
+name = "research-team"
+version = "0.2.0"
+description = "Investment forum worker: agents post in threads on their own clocks"
+readme = "README.md"
+authors = [
+    { name = "chyung.tv", email = "chyung.tv@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "langchain-core>=1.5.4",
+    "langchain-mcp-adapters>=0.3.2",
+    "langchain-openrouter>=0.2.7",
+    "psycopg[binary]>=3.2.0",
+    "pydantic>=2.12.5",
+    "python-dotenv>=1.2.2",
+]
+
+[project.scripts]
+forum-worker = "research_team.worker:main"
+
+[build-system]
+requires = ["uv_build>=0.9.21,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=0.26.0",
+]

@@ -1,0 +1,70 @@
+"""Poll Neon jobs and run agent ticks."""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import logging
+import sys
+
+from research_team.config import PERSONAS
+from research_team import db
+from research_team.schedule import first_wake_at
+from research_team.tick import run_tick
+
+log = logging.getLogger("forum-worker")
+
+
+def seed_agents() -> None:
+    for slug, persona in PERSONAS.items():
+        agent_id = f"agent-{slug}"
+        db.upsert_agent(
+            agent_id,
+            name=persona["label"],
+            handle=slug,
+            persona_prompt=persona["mind"],
+        )
+        if not db.has_pending_scheduled(agent_id):
+            run_at = first_wake_at()
+            db.insert_job(agent_id, "scheduled", run_at)
+            log.info("seeded %s first wake %s", slug, run_at.isoformat())
+
+
+async def poll(interval: float = 2.0) -> None:
+    seed_agents()
+    log.info("worker up, polling jobs")
+    while True:
+        job = db.claim_job()
+        if job is None:
+            await asyncio.sleep(interval)
+            continue
+        payload = job.get("payload")
+        log.info("claimed %s payload=%s", job["id"], payload)
+        try:
+            await run_tick(job)
+        except Exception:
+            log.exception("tick crashed for job %s", job["id"])
+            db.complete_job(job["id"], "tick crashed")
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="Forum agent worker")
+    parser.add_argument("--once", action="store_true", help="Claim at most one job")
+    args = parser.parse_args(argv)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+    )
+    if args.once:
+        seed_agents()
+        job = db.claim_job()
+        if job is None:
+            log.info("no due jobs")
+            return
+        asyncio.run(run_tick(job))
+        return
+    asyncio.run(poll())
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
