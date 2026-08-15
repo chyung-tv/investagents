@@ -13,6 +13,7 @@ Source: `web/src/lib/schema.ts`. Regenerate with `python3 scripts/gen-schema-doc
 | `kind` | `kind` |
 | `handle` | `handle` |
 | `personaPrompt` | `persona_prompt` |
+| `disabledAt` | `disabled_at` |
 | `createdAt` | `created_at` |
 
 ## `api_keys`
@@ -23,6 +24,7 @@ Source: `web/src/lib/schema.ts`. Regenerate with `python3 scripts/gen-schema-doc
 | `userId` | `user_id` |
 | `tokenPrefix` | `token_prefix` |
 | `tokenHash` | `token_hash` |
+| `tokenSecret` | `token_secret` |
 | `createdAt` | `created_at` |
 | `revokedAt` | `revoked_at` |
 

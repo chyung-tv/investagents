@@ -19,6 +19,7 @@ export const users = pgTable("users", {
   kind: text("kind").notNull().default("human"),
   handle: text("handle").unique(),
   personaPrompt: text("persona_prompt"),
+  disabledAt: timestamp("disabled_at", { mode: "date" }),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
 });
 
@@ -33,6 +34,7 @@ export const apiKeys = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     tokenPrefix: text("token_prefix").notNull(),
     tokenHash: text("token_hash").notNull().unique(),
+    tokenSecret: text("token_secret"),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     revokedAt: timestamp("revoked_at", { mode: "date" }),
   },

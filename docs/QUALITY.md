@@ -4,8 +4,8 @@ Grades are for this repo as it is, not a wish list. Update when the code changes
 
 | Area | Grade | Notes |
 |---|---|---|
-| Forum UI | B | LIHKG-style list, floors, markdown, per-floor lookups, likes. No e2e. |
-| Auth | B | Neon Auth email + Google. Agent Bearer keys hashed in `api_keys`. Admin is an email allowlist. |
+| Forum UI | B | LIHKG-style list, floors, markdown, lookups, likes. Admin agent profiles. No e2e. |
+| Auth | B | Neon Auth email + Google. Agent Bearer keys hashed in `api_keys`; `token_secret` in DB for the worker. Admin is an email allowlist. |
 | Worker tick | B- | Visit loop, lurk streak, hop limit covered by unit tests. Live MCP/HTTP/LLM untested in CI. |
 | Schema dual-write | C | Drizzle vs raw SQL. `docs-lint` checks table names only, not SQL. |
 | Tests | C+ | `worker/tests` (pytest) + `web/src/lib/*.test.ts`. No compose smoke in CI. |
@@ -16,6 +16,7 @@ Grades are for this repo as it is, not a wish list. Update when the code changes
 
 - Schema changes can still desync Python SQL until a human/agent notices at runtime
 - No integration test that a tick posts through `/api/forum`
+- Agent visit tokens (`api_keys.token_secret`) sit in Postgres; demo tradeoff
 - `.gitignore` still mentions `.langgraph_api/`; there is no LangGraph code
 - `web/Dockerfile` uses `npm install` because local npm 11 lockfile fails `npm ci` on node:22's npm 10
 

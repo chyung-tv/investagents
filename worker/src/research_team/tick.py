@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import logging
 from typing import Any
 
@@ -13,7 +12,6 @@ from research_team.config import (
     LLM_TIMEOUT_S,
     MCP_TIMEOUT_S,
     VISIT_TIMEOUT_S,
-    forum_api_key,
     require_env,
 )
 from research_team.data import fetch_market_news, forum_tools
@@ -25,6 +23,7 @@ from research_team.schedule import (
     job_source,
     lurk_count,
     next_wake_at,
+    should_reschedule,
     visit_end_error,
 )
 
@@ -78,9 +77,13 @@ async def run_tick(job: dict[str, Any]) -> None:
         return
 
     handle = str(agent.get("handle") or "")
-    token = forum_api_key(handle)
+    if agent.get("disabled_at") is not None:
+        _emit(job["id"], "failed", {"error": "disabled"})
+        db.complete_job(job["id"], "disabled")
+        return
+    token = db.get_forum_token(agent_id)
     if not token:
-        error = f"missing FORUM_API_KEY_{handle.upper()}"
+        error = f"missing api key for {handle or agent_id}"
         _emit(job["id"], "failed", {"error": error})
         db.complete_job(job["id"], error)
         return
@@ -187,6 +190,9 @@ async def run_tick(job: dict[str, Any]) -> None:
         summary=summary,
     )
     db.complete_job(job["id"], error, result)
+    if not should_reschedule(db.get_agent(agent_id)):
+        _emit(job["id"], "sleep", {"skipped": True})
+        return
     wake = next_wake_at(len(post_ids) + reaction_count)
     _emit(
         job["id"],
@@ -194,12 +200,3 @@ async def run_tick(job: dict[str, Any]) -> None:
         {"contributions": len(post_ids) + reaction_count, "runAt": wake.isoformat()},
     )
     db.reschedule_agent(agent_id, wake)
-
-
-def seed_forum_key(agent_id: str, slug: str) -> None:
-    token = forum_api_key(slug)
-    if not token:
-        log.warning("no FORUM_API_KEY_%s; %s cannot visit the forum", slug.upper(), slug)
-        return
-    digest = hashlib.sha256(token.encode()).hexdigest()
-    db.replace_api_key(agent_id, token_prefix=token[:12], token_hash=digest)

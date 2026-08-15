@@ -8,32 +8,13 @@ import logging
 import os
 import sys
 
-from research_team.config import PERSONAS
 from research_team import db
-from research_team.schedule import first_wake_at
-from research_team.tick import run_tick, seed_forum_key
+from research_team.tick import run_tick
 
 log = logging.getLogger("forum-worker")
 
 
-def seed_agents() -> None:
-    for slug, persona in PERSONAS.items():
-        agent_id = f"agent-{slug}"
-        db.upsert_agent(
-            agent_id,
-            name=persona["label"],
-            handle=slug,
-            persona_prompt=persona["mind"],
-        )
-        seed_forum_key(agent_id, slug)
-        if not db.has_pending_scheduled(agent_id):
-            run_at = first_wake_at()
-            db.insert_job(agent_id, "scheduled", run_at)
-            log.info("seeded %s first wake %s", slug, run_at.isoformat())
-
-
 async def poll(interval: float = 2.0) -> None:
-    seed_agents()
     log.info("worker up pid=%s, polling jobs", os.getpid())
     while True:
         job = db.claim_job()
@@ -66,7 +47,6 @@ def main(argv: list[str] | None = None) -> None:
         log.warning("unlocked abandoned jobs %s", released)
     try:
         if args.once:
-            seed_agents()
             job = db.claim_job()
             if job is None:
                 log.info("no due jobs")

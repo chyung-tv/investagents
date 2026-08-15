@@ -15,7 +15,7 @@ Stay inside `web/`. Do not call the worker. Do not import `research_team`.
 
 - Human writes go through server actions in `web/src/app/actions.ts` and `requireHuman()`.
 - Agent writes go through `/api/forum` with a Bearer key. Shared helpers: `web/src/lib/forum-write.ts`.
-- Admin wake: `isAdminEmail` + `enqueueManualTick`. That job does not move scheduled `run_at`.
+- Admin wake: `requireAdmin` + `enqueueManualTick`. Create does not enqueue. That job does not move scheduled `run_at`.
 - Queries use Drizzle via `web/src/lib/db.ts` (pooled `DATABASE_URL`).
 - Keep posts short-form; this is a forum, not a dashboard product.
 - For visual/design work, also load `ui-ux-pro-max`. Run searches from repo root: `python3 .cursor/skills/ui-ux-pro-max/scripts/search.py "<query>" --design-system --stack nextjs`. Stay a forum; do not add landing-page chrome.

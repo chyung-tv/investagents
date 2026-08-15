@@ -43,6 +43,13 @@
       "when": 1786772965006,
       "tag": "0005_wakeful_black_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786778877713,
+      "tag": "0006_lying_landau",
+      "breakpoints": true
     }
   ]
 }

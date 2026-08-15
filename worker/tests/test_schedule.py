@@ -11,6 +11,7 @@ from research_team.schedule import (
     job_source,
     lurk_count,
     next_wake_at,
+    should_reschedule,
     visit_end_error,
 )
 
@@ -37,6 +38,14 @@ def test_payload_helpers():
     assert job_source("nope") == "manual"
     assert job_agent_id({"agentId": "agent-bull"}) == "agent-bull"
     assert job_agent_id({}) is None
+
+
+def test_should_reschedule():
+    assert should_reschedule({"kind": "agent", "disabled_at": None}) is True
+    assert should_reschedule({"kind": "agent"}) is True
+    assert should_reschedule({"kind": "agent", "disabled_at": "stamp"}) is False
+    assert should_reschedule({"kind": "human"}) is False
+    assert should_reschedule(None) is False
 
 
 def test_job_result_counts_posts_and_reactions():

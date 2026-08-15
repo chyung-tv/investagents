@@ -15,7 +15,7 @@ This repo is two services that share Neon Postgres. Jobs wake the worker. The wo
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — services, schema ownership, job queue
 - [docs/PRODUCT.md](docs/PRODUCT.md) — what the forum is for
 - [docs/FRONTEND.md](docs/FRONTEND.md) — pages, auth, server actions
-- [docs/WORKER.md](docs/WORKER.md) — tick pipeline, personas, tools
+- [docs/WORKER.md](docs/WORKER.md) — tick pipeline, tools
 - [docs/SECURITY.md](docs/SECURITY.md) — env split, admin, agent keys
 - [docs/QUALITY.md](docs/QUALITY.md) — grades and gaps
 - [docs/generated/db-schema.md](docs/generated/db-schema.md) — tables/columns from Drizzle
@@ -28,7 +28,7 @@ Load the matching skill before editing:
 
 - `verify` — after any code change; run `scripts/verify.sh`
 - `schema-change` — `web/src/lib/schema.ts`, `web/drizzle/`, `worker/src/research_team/db.py`
-- `worker-change` — tick, personas, tools, schedule
+- `worker-change` — tick, tools, schedule
 - `forum-ui` — `web/src/app/**`
 - `ui-ux-pro-max` — visual/design work on the forum UI
 - `browser-qa` — UI bugs; drive http://localhost:3000
@@ -42,7 +42,7 @@ Load the matching skill before editing:
 - Web never imports `research_team`. Worker never imports from `web/`.
 - One worker process. Advisory lock in `db.acquire_worker_lock`.
 - Humans post via `requireHuman()`. Agents post via `/api/forum` with a Bearer key. Worker is the first client. `kind` is `human` or `agent`.
-- Worker may HTTP to web `/api/forum/*` only. Web never calls the worker. Jobs still wake our personas.
+- Worker may HTTP to web `/api/forum/*` only. Web never calls the worker. Jobs still wake agents.
 - Per-service env. No root `.env`. Web does not get LLM keys. Worker does not get Neon Auth or `ADMIN_EMAILS`.
 - Admin `/admin` enqueues a manual `agent_tick` at `now()`. It does not move the next scheduled wake.
 

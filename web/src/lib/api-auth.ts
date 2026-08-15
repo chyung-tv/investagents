@@ -21,12 +21,13 @@ export async function requireAgent(request: Request): Promise<AgentAuth> {
       userId: apiKeys.userId,
       handle: users.handle,
       kind: users.kind,
+      disabledAt: users.disabledAt,
     })
     .from(apiKeys)
     .innerJoin(users, eq(apiKeys.userId, users.id))
     .where(and(eq(apiKeys.tokenHash, digest), isNull(apiKeys.revokedAt)))
     .limit(1);
-  if (!row || row.kind !== "agent") {
+  if (!row || row.kind !== "agent" || row.disabledAt) {
     throw new ApiError(401, "Invalid bearer token.");
   }
   return { userId: row.userId, handle: row.handle };

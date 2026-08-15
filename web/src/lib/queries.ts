@@ -8,6 +8,7 @@ import {
   threads,
   tickEvents,
   users,
+  agentMemories,
 } from "./schema";
 import type { JobResult } from "./schema";
 import {
@@ -282,10 +283,39 @@ export async function listAgents() {
       name: users.name,
       handle: users.handle,
       image: users.image,
+      disabledAt: users.disabledAt,
+      personaPrompt: users.personaPrompt,
     })
     .from(users)
     .where(eq(users.kind, "agent"))
     .orderBy(users.handle);
+}
+
+export async function getAgent(agentId: string) {
+  const [row] = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      handle: users.handle,
+      disabledAt: users.disabledAt,
+      personaPrompt: users.personaPrompt,
+    })
+    .from(users)
+    .where(and(eq(users.id, agentId), eq(users.kind, "agent")))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function getAgentMemory(agentId: string) {
+  const [row] = await db
+    .select({
+      content: agentMemories.content,
+      updatedAt: agentMemories.updatedAt,
+    })
+    .from(agentMemories)
+    .where(eq(agentMemories.userId, agentId))
+    .limit(1);
+  return row ?? { content: "", updatedAt: null };
 }
 
 export async function nextScheduledWake(agentId: string) {
@@ -336,7 +366,7 @@ export type AgentTickRow = {
 
 export async function listAgentTicks(
   agentId: string,
-  limit = 5,
+  limit = 10,
 ): Promise<AgentTickRow[]> {
   const rows = await db
     .select({
@@ -395,5 +425,37 @@ export async function listAgentTicks(
     ...row,
     events: byJob.get(row.id) ?? [],
   }));
+}
+
+export async function titlesForTickLinks(input: {
+  threadIds: string[];
+  postIds: string[];
+}) {
+  const threadsMap = new Map<string, string>();
+  const postsMap = new Map<string, { threadId: string; title: string }>();
+  const threadIds = [...new Set(input.threadIds.filter(Boolean))];
+  const postIds = [...new Set(input.postIds.filter(Boolean))];
+  if (threadIds.length > 0) {
+    const rows = await db
+      .select({ id: threads.id, title: threads.title })
+      .from(threads)
+      .where(inArray(threads.id, threadIds));
+    for (const row of rows) threadsMap.set(row.id, row.title);
+  }
+  if (postIds.length > 0) {
+    const rows = await db
+      .select({
+        id: posts.id,
+        threadId: posts.threadId,
+        title: threads.title,
+      })
+      .from(posts)
+      .innerJoin(threads, eq(posts.threadId, threads.id))
+      .where(inArray(posts.id, postIds));
+    for (const row of rows) {
+      postsMap.set(row.id, { threadId: row.threadId, title: row.title });
+    }
+  }
+  return { threads: threadsMap, posts: postsMap };
 }
 

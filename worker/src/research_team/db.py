@@ -115,41 +115,11 @@ def insert_tick_event(
         conn.commit()
 
 
-def insert_job(agent_id: str, source: str, run_at: datetime) -> str:
-    job_id = str(uuid4())
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO jobs (id, kind, payload, run_at)
-            VALUES (%s, 'agent_tick', %s, %s)
-            """,
-            (job_id, Json({"agentId": agent_id, "source": source}), run_at),
-        )
-        conn.commit()
-    return job_id
-
-
-def has_pending_scheduled(agent_id: str) -> bool:
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT 1 FROM jobs
-            WHERE done_at IS NULL
-              AND kind = 'agent_tick'
-              AND payload->>'source' = 'scheduled'
-              AND payload->>'agentId' = %s
-            LIMIT 1
-            """,
-            (agent_id,),
-        ).fetchone()
-    return row is not None
-
-
 def get_agent(agent_id: str) -> dict[str, Any] | None:
     with connect() as conn:
         row = conn.execute(
             """
-            SELECT u.id, u.name, u.handle, u.kind, u.persona_prompt,
+            SELECT u.id, u.name, u.handle, u.kind, u.persona_prompt, u.disabled_at,
                    coalesce(m.content, '') AS memory
             FROM users u
             LEFT JOIN agent_memories m ON m.user_id = u.id
@@ -160,73 +130,25 @@ def get_agent(agent_id: str) -> dict[str, Any] | None:
         return dict(row) if row else None
 
 
-def list_agent_users() -> list[dict[str, Any]]:
+def get_forum_token(agent_id: str) -> str | None:
     with connect() as conn:
-        rows = conn.execute(
+        row = conn.execute(
             """
-            SELECT id, handle FROM users
-            WHERE kind = 'agent'
-            ORDER BY handle
-            """
-        ).fetchall()
-        return [dict(r) for r in rows]
-
-
-def upsert_agent(
-    agent_id: str,
-    *,
-    name: str,
-    handle: str,
-    persona_prompt: str,
-) -> None:
-    email = f"{handle}@agents.local"
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO users (id, name, email, kind, handle, persona_prompt)
-            VALUES (%s, %s, %s, 'agent', %s, %s)
-            ON CONFLICT (id) DO UPDATE SET
-              name = EXCLUDED.name,
-              persona_prompt = EXCLUDED.persona_prompt,
-              handle = EXCLUDED.handle
-            """,
-            (agent_id, name, email, handle, persona_prompt),
-        )
-        conn.execute(
-            """
-            INSERT INTO agent_memories (user_id, content, updated_at)
-            VALUES (%s, '', now())
-            ON CONFLICT (user_id) DO NOTHING
+            SELECT token_secret
+            FROM api_keys
+            WHERE user_id = %s
+              AND revoked_at IS NULL
+              AND token_secret IS NOT NULL
+            ORDER BY created_at DESC
+            LIMIT 1
             """,
             (agent_id,),
-        )
-        conn.commit()
-
-
-def replace_api_key(user_id: str, *, token_prefix: str, token_hash: str) -> None:
-    with connect() as conn:
-        conn.execute(
-            """
-            UPDATE api_keys
-            SET revoked_at = now()
-            WHERE user_id = %s
-              AND token_hash <> %s
-              AND revoked_at IS NULL
-            """,
-            (user_id, token_hash),
-        )
-        conn.execute(
-            """
-            INSERT INTO api_keys (id, user_id, token_prefix, token_hash)
-            VALUES (%s, %s, %s, %s)
-            ON CONFLICT (token_hash) DO UPDATE SET
-              user_id = EXCLUDED.user_id,
-              token_prefix = EXCLUDED.token_prefix,
-              revoked_at = NULL
-            """,
-            (str(uuid4()), user_id, token_prefix[:12], token_hash),
-        )
-        conn.commit()
+        ).fetchone()
+    if not row:
+        return None
+    secret = row["token_secret"]
+    text = str(secret).strip() if secret is not None else ""
+    return text or None
 
 
 def lurk_results(agent_id: str, limit: int = 8) -> list[Any]:

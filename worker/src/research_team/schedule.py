@@ -46,6 +46,14 @@ def job_agent_id(payload: object) -> str | None:
     return None
 
 
+def should_reschedule(agent: object) -> bool:
+    if not isinstance(agent, dict):
+        return False
+    if agent.get("kind") != "agent":
+        return False
+    return agent.get("disabled_at") is None
+
+
 BOARDS = ("lounge", "equities", "macro", "crypto")
 CRYPTO_TICKERS = {"BTC", "ETH", "COIN", "MSTR", "IBIT", "GBTC", "SOL"}
 MACRO_TITLE = ("housing", "ppi", "rate hike", "macro", "inventory", "inflation")
