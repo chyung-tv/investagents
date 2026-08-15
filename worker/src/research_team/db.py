@@ -213,6 +213,7 @@ def candidate_threads(agent_id: str, limit: int = 20) -> list[dict[str, Any]]:
               t.id,
               t.title,
               t.ticker,
+              t.board,
               t.last_activity_at,
               r.last_seen_at,
               true AS has_new,
@@ -239,6 +240,7 @@ def candidate_threads(agent_id: str, limit: int = 20) -> list[dict[str, Any]]:
                   t.id,
                   t.title,
                   t.ticker,
+                  t.board,
                   t.last_activity_at,
                   r.last_seen_at,
                   (t.last_activity_at > coalesce(r.last_seen_at, 'epoch'::timestamptz))
@@ -260,6 +262,7 @@ def candidate_threads(agent_id: str, limit: int = 20) -> list[dict[str, Any]]:
                   t.id,
                   t.title,
                   t.ticker,
+                  t.board,
                   t.last_activity_at,
                   r.last_seen_at,
                   (t.last_activity_at > coalesce(r.last_seen_at, 'epoch'::timestamptz))
@@ -310,7 +313,7 @@ def thread_pins(thread_id: str, cap: int = 12) -> list[dict[str, Any]]:
 def get_thread(thread_id: str) -> dict[str, Any] | None:
     with connect() as conn:
         row = conn.execute(
-            "SELECT id, title, ticker, author_id FROM threads WHERE id = %s",
+            "SELECT id, title, ticker, board, author_id FROM threads WHERE id = %s",
             (thread_id,),
         ).fetchone()
         return dict(row) if row else None
@@ -321,15 +324,16 @@ def insert_thread(
     thread_id: str,
     title: str,
     ticker: str | None,
+    board: str,
     author_id: str,
 ) -> None:
     with connect() as conn:
         conn.execute(
             """
-            INSERT INTO threads (id, title, ticker, author_id)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO threads (id, title, ticker, board, author_id)
+            VALUES (%s, %s, %s, %s, %s)
             """,
-            (thread_id, title, ticker, author_id),
+            (thread_id, title, ticker, board, author_id),
         )
         conn.commit()
 

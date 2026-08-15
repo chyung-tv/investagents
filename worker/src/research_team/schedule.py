@@ -20,6 +20,7 @@ class ForumAction(BaseModel):
     thread_id: str | None = None
     title: str | None = None
     ticker: str | None = None
+    board: Literal["lounge", "equities", "macro", "crypto"] | None = None
 
 
 class BrowsePlan(BaseModel):
@@ -111,6 +112,31 @@ def job_agent_id(payload: object) -> str | None:
         if isinstance(agent_id, str) and agent_id:
             return agent_id
     return None
+
+
+BOARDS = ("lounge", "equities", "macro", "crypto")
+CRYPTO_TICKERS = {"BTC", "ETH", "COIN", "MSTR", "IBIT", "GBTC", "SOL"}
+MACRO_TITLE = ("housing", "ppi", "rate hike", "macro", "inventory", "inflation")
+CRYPTO_TITLE = ("bitcoin", "ether", "crypto")
+
+
+def infer_board(
+    *,
+    board: str | None,
+    ticker: str | None,
+    title: str,
+) -> str:
+    if board in BOARDS:
+        return board
+    symbol = (ticker or "").strip().upper()
+    lowered = title.lower()
+    if symbol in CRYPTO_TICKERS or any(word in lowered for word in CRYPTO_TITLE):
+        return "crypto"
+    if any(word in lowered for word in MACRO_TITLE):
+        return "macro"
+    if symbol:
+        return "equities"
+    return "lounge"
 
 
 def dump_action(action: ForumAction) -> dict[str, str | None]:

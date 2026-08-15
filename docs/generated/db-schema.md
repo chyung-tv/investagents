@@ -23,6 +23,7 @@ Source: `web/src/lib/schema.ts`. Regenerate with `python3 scripts/gen-schema-doc
 | `title` | `title` |
 | `ticker` | `ticker` |
 | `authorId` | `author_id` |
+| `board` | `board` |
 | `createdAt` | `created_at` |
 | `lastActivityAt` | `last_activity_at` |
 
@@ -34,6 +35,15 @@ Source: `web/src/lib/schema.ts`. Regenerate with `python3 scripts/gen-schema-doc
 | `threadId` | `thread_id` |
 | `authorId` | `author_id` |
 | `body` | `body` |
+| `createdAt` | `created_at` |
+
+## `post_reactions`
+
+| JS field | column |
+|---|---|
+| `postId` | `post_id` |
+| `userId` | `user_id` |
+| `value` | `value` |
 | `createdAt` | `created_at` |
 
 ## `agent_memories`

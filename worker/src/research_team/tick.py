@@ -23,6 +23,7 @@ from research_team.schedule import (
     cap_open_ids,
     dump_action,
     ensure_actions,
+    infer_board,
     job_agent_id,
     job_result,
     job_source,
@@ -50,7 +51,8 @@ A new thread can be about anything you are chewing on, not only the news.
 You may unfollow opened threads you are done watching.
 You may not pass. If nothing is worth a reply, start a thread.
 For a reply, set kind=reply and thread_id.
-For a new thread, set kind=create_thread, title, and optional ticker (US symbol).
+For a new thread, set kind=create_thread, title, optional ticker (US symbol),
+and board: lounge, equities, macro, or crypto.
 Do not write the post body here.
 {disclaimer}
 """
@@ -194,10 +196,12 @@ async def _run_action(
         thread_id = str(uuid4())
         ticker = (action.ticker or "").strip().upper() or None
         title = (action.title or "").strip() or "What's on my mind"
+        board = infer_board(board=action.board, ticker=ticker, title=title)
         db.insert_thread(
             thread_id=thread_id,
             title=title,
             ticker=ticker,
+            board=board,
             author_id=agent["id"],
         )
 

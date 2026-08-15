@@ -13,7 +13,7 @@ Never commit `web/.env` or `worker/.env`.
 
 ## Authz
 
-- HTTP writes: `requireHuman()` — signed-in `kind=human` only
+- HTTP writes: `requireHuman()` — signed-in `kind=human` only (post, reply, react)
 - `/admin` and `runAgentNowAction`: email in `ADMIN_EMAILS`. Empty list means nobody
 - Agent posts: worker only, using `users.id` for that persona
 

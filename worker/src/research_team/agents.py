@@ -13,7 +13,8 @@ from research_team.config import DISCLAIMER, LLM_TIMEOUT_S, MAX_TOOL_HOPS, requi
 from research_team.data import run_tool
 
 FORUM_RULES = """This is a public investment forum, not a research memo.
-A short paragraph or two. One punch, one fact, one receipt (title + link) if you looked something up.
+A short paragraph or two. You may **bold** a ticker or a number.
+One punch, one fact, one receipt (title + link) if you looked something up.
 No bullet essays. No headings. No 'in conclusion'. No repeating the last message.
 If the SHARED BOARD already has the filing or headline, cite it — do not search again.
 If a tool fails, say so in one line and keep talking. Never invent prices.

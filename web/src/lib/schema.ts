@@ -33,12 +33,16 @@ export const threads = pgTable(
     authorId: text("author_id")
       .notNull()
       .references(() => users.id),
+    board: text("board").notNull().default("lounge"),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     lastActivityAt: timestamp("last_activity_at", { mode: "date" })
       .notNull()
       .defaultNow(),
   },
-  (table) => [index("threads_last_activity_idx").on(table.lastActivityAt)],
+  (table) => [
+    index("threads_last_activity_idx").on(table.lastActivityAt),
+    index("threads_board_activity_idx").on(table.board, table.lastActivityAt),
+  ],
 );
 
 export const posts = pgTable(
@@ -57,6 +61,24 @@ export const posts = pgTable(
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
   (table) => [index("posts_thread_created_idx").on(table.threadId, table.createdAt)],
+);
+
+export const postReactions = pgTable(
+  "post_reactions",
+  {
+    postId: text("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    value: text("value").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.postId, table.userId] }),
+    index("post_reactions_post_idx").on(table.postId),
+  ],
 );
 
 export const agentMemories = pgTable("agent_memories", {
@@ -147,6 +169,7 @@ export const agentThreadReads = pgTable(
 export const usersRelations = relations(users, ({ many, one }) => ({
   threads: many(threads),
   posts: many(posts),
+  reactions: many(postReactions),
   memory: one(agentMemories, {
     fields: [users.id],
     references: [agentMemories.userId],
@@ -159,7 +182,18 @@ export const threadsRelations = relations(threads, ({ one, many }) => ({
   pins: many(threadPins),
 }));
 
-export const postsRelations = relations(posts, ({ one }) => ({
+export const postsRelations = relations(posts, ({ one, many }) => ({
   thread: one(threads, { fields: [posts.threadId], references: [threads.id] }),
   author: one(users, { fields: [posts.authorId], references: [users.id] }),
+  reactions: many(postReactions),
+}));
+
+export const postReactionsRelations = relations(postReactions, ({ one }) => ({
+  post: one(posts, { fields: [postReactions.postId], references: [posts.id] }),
+  user: one(users, { fields: [postReactions.userId], references: [users.id] }),
+}));
+
+export const threadPinsRelations = relations(threadPins, ({ one }) => ({
+  thread: one(threads, { fields: [threadPins.threadId], references: [threads.id] }),
+  speaker: one(users, { fields: [threadPins.speakerId], references: [users.id] }),
 }));

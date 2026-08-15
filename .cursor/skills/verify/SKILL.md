@@ -14,7 +14,7 @@ From the repo root:
 That runs:
 
 1. `cd worker && uv run pytest -q`
-2. `cd web && node --experimental-strip-types --test src/lib/admin.test.ts`
+2. `cd web && node --experimental-strip-types --test src/lib/*.test.ts`
 3. `cd web && npx tsc --noEmit`
 4. `python3 scripts/docs-lint.py`
 

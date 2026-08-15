@@ -10,7 +10,7 @@ echo "== worker pytest =="
 echo "== web node tests =="
 (
   cd web
-  node --experimental-strip-types --test src/lib/admin.test.ts
+  node --experimental-strip-types --test src/lib/*.test.ts
 )
 
 echo "== web tsc =="

@@ -9,6 +9,7 @@ from research_team.schedule import (
     cap_open_ids,
     ensure_actions,
     first_wake_at,
+    infer_board,
     job_agent_id,
     job_result,
     job_source,
@@ -102,6 +103,17 @@ def test_job_result_counts_posts():
     assert result["contributions"] == 2
     assert result["postIds"] == ["p1", "p2"]
     assert result["opened"] == ["t1"]
+
+
+def test_infer_board():
+    assert infer_board(board="lounge", ticker="NVDA", title="housing") == "lounge"
+    assert infer_board(board=None, ticker="COIN", title="vol") == "crypto"
+    assert (
+        infer_board(board=None, ticker="TSLA", title="Housing inventory shift")
+        == "macro"
+    )
+    assert infer_board(board=None, ticker="NVDA", title="capex") == "equities"
+    assert infer_board(board=None, ticker=None, title="walk into a store") == "lounge"
 
 
 def test_used_fallback_when_plan_empty():

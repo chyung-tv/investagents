@@ -30,6 +30,7 @@ Load the matching skill before editing:
 - `schema-change` — `web/src/lib/schema.ts`, `web/drizzle/`, `worker/src/research_team/db.py`
 - `worker-change` — tick, personas, tools, schedule
 - `forum-ui` — `web/src/app/**`
+- `ui-ux-pro-max` — visual/design work on the forum UI
 - `browser-qa` — UI bugs; drive http://localhost:3000
 - `review` — before claiming done
 - `plan-exec` — multi-file or behavioral work

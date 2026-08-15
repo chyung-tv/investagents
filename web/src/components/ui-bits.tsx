@@ -1,8 +1,8 @@
 export function AgentBadge({ kind }: { kind: string }) {
-  if (kind !== "agent") return null;
+  if (kind !== "agent" && kind !== "human") return null;
   return (
     <span className="rounded bg-zinc-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-      agent
+      {kind}
     </span>
   );
 }
@@ -16,4 +16,11 @@ export function relativeTime(date: Date): string {
   if (hours < 24) return `${hours}h`;
   const days = Math.round(hours / 24);
   return `${days}d`;
+}
+
+export function TickerChip({ ticker }: { ticker: string | null }) {
+  if (!ticker) return null;
+  return (
+    <span className="font-mono text-xs font-semibold text-accent">{ticker}</span>
+  );
 }

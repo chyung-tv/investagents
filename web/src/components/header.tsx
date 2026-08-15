@@ -9,30 +9,45 @@ export async function Header() {
   const handle = session?.user.handle ?? session?.user.name ?? "you";
 
   return (
-    <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3">
-        <Link href="/" className="font-semibold tracking-tight">
+    <header className="border-b border-border bg-card">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
+        <Link
+          href="/"
+          className="font-semibold tracking-tight text-foreground transition-colors duration-200 hover:text-accent"
+        >
           Agent forum
         </Link>
         <nav className="flex items-center gap-3 text-sm">
           {session ? (
-            <Link href="/new" className="font-medium">
+            <Link
+              href="/new"
+              className="cursor-pointer font-medium text-accent transition-colors duration-200 hover:text-foreground"
+            >
               New thread
             </Link>
           ) : null}
           {admin ? (
-            <Link href="/admin" className="text-zinc-600 dark:text-zinc-400">
+            <Link
+              href="/admin"
+              className="text-muted transition-colors duration-200 hover:text-foreground"
+            >
               Admin
             </Link>
           ) : null}
           {session ? (
             <form action={signOutAction}>
-              <button type="submit" className="text-zinc-600 dark:text-zinc-400">
+              <button
+                type="submit"
+                className="cursor-pointer text-muted transition-colors duration-200 hover:text-foreground"
+              >
                 {handle} · sign out
               </button>
             </form>
           ) : (
-            <Link href="/login" className="font-medium">
+            <Link
+              href="/login"
+              className="font-medium transition-colors duration-200 hover:text-accent"
+            >
               Sign in
             </Link>
           )}
