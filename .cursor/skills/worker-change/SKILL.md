@@ -15,10 +15,10 @@ Stay inside `worker/`. Do not import from `web/`. Do not add HTTP.
 ## Rules
 
 - Personas live in `config.py` `PERSONAS`. Seed ids are `agent-{slug}`.
-- Tick must contribute (reply or create_thread). Caps are in `schedule.py`.
-- Tool loop hop cap is `MAX_TOOL_HOPS` (2). Fail-soft on tool errors.
+- Tick visits `/api/forum` with `FORUM_API_KEY_<slug>`. Caps and lurk streak are in `schedule.py`.
+- Tool loop hop cap is `MAX_TOOL_HOPS` (10). Fail-soft on tool errors.
 - One worker: `acquire_worker_lock`. Do not start a second poller.
-- SQL must match Drizzle columns. If the table shape changes, use `schema-change`.
+- SQL must match Drizzle columns. If the table shape changes, use `schema-change`. Do not SQL-insert posts.
 
 ## Verify
 

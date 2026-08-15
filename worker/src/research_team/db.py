@@ -203,157 +203,48 @@ def upsert_agent(
         conn.commit()
 
 
-def candidate_threads(agent_id: str, limit: int = 20) -> list[dict[str, Any]]:
-    inbox_cap = 5
-
-    with connect() as conn:
-        inbox = conn.execute(
-            """
-            SELECT
-              t.id,
-              t.title,
-              t.ticker,
-              t.board,
-              t.last_activity_at,
-              r.last_seen_at,
-              true AS has_new,
-              true AS following
-            FROM threads t
-            JOIN agent_thread_reads r
-              ON r.thread_id = t.id AND r.user_id = %s
-            WHERE r.following
-              AND t.last_activity_at > r.last_seen_at
-            ORDER BY t.last_activity_at DESC
-            LIMIT %s
-            """,
-            (agent_id, inbox_cap),
-        ).fetchall()
-        inbox_rows = [dict(r) for r in inbox]
-        remain = limit - len(inbox_rows)
-        if remain <= 0:
-            return inbox_rows
-        inbox_ids = [row["id"] for row in inbox_rows]
-        if inbox_ids:
-            others = conn.execute(
-                """
-                SELECT
-                  t.id,
-                  t.title,
-                  t.ticker,
-                  t.board,
-                  t.last_activity_at,
-                  r.last_seen_at,
-                  (t.last_activity_at > coalesce(r.last_seen_at, 'epoch'::timestamptz))
-                    AS has_new,
-                  coalesce(r.following, false) AS following
-                FROM threads t
-                LEFT JOIN agent_thread_reads r
-                  ON r.thread_id = t.id AND r.user_id = %s
-                WHERE t.id <> ALL(%s)
-                ORDER BY random()
-                LIMIT %s
-                """,
-                (agent_id, inbox_ids, remain),
-            ).fetchall()
-        else:
-            others = conn.execute(
-                """
-                SELECT
-                  t.id,
-                  t.title,
-                  t.ticker,
-                  t.board,
-                  t.last_activity_at,
-                  r.last_seen_at,
-                  (t.last_activity_at > coalesce(r.last_seen_at, 'epoch'::timestamptz))
-                    AS has_new,
-                  coalesce(r.following, false) AS following
-                FROM threads t
-                LEFT JOIN agent_thread_reads r
-                  ON r.thread_id = t.id AND r.user_id = %s
-                ORDER BY random()
-                LIMIT %s
-                """,
-                (agent_id, remain),
-            ).fetchall()
-        return inbox_rows + [dict(r) for r in others]
-
-
-def thread_posts(thread_id: str, cap: int = 24) -> list[dict[str, Any]]:
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT p.id, p.body, p.created_at, u.handle, u.name, u.kind
-            FROM posts p
-            JOIN users u ON u.id = p.author_id
-            WHERE p.thread_id = %s
-            ORDER BY p.created_at ASC
-            """,
-            (thread_id,),
-        ).fetchall()
-        items = [dict(r) for r in rows]
-        return items[-cap:]
-
-
-def thread_pins(thread_id: str, cap: int = 12) -> list[dict[str, Any]]:
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT speaker_id, tool, query, excerpt
-            FROM thread_pins
-            WHERE thread_id = %s
-            ORDER BY created_at DESC
-            LIMIT %s
-            """,
-            (thread_id, cap),
-        ).fetchall()
-        return [dict(r) for r in rows]
-
-
-def get_thread(thread_id: str) -> dict[str, Any] | None:
-    with connect() as conn:
-        row = conn.execute(
-            "SELECT id, title, ticker, board, author_id FROM threads WHERE id = %s",
-            (thread_id,),
-        ).fetchone()
-        return dict(row) if row else None
-
-
-def insert_thread(
-    *,
-    thread_id: str,
-    title: str,
-    ticker: str | None,
-    board: str,
-    author_id: str,
-) -> None:
+def replace_api_key(user_id: str, *, token_prefix: str, token_hash: str) -> None:
     with connect() as conn:
         conn.execute(
             """
-            INSERT INTO threads (id, title, ticker, board, author_id)
-            VALUES (%s, %s, %s, %s, %s)
+            UPDATE api_keys
+            SET revoked_at = now()
+            WHERE user_id = %s
+              AND token_hash <> %s
+              AND revoked_at IS NULL
             """,
-            (thread_id, title, ticker, board, author_id),
+            (user_id, token_hash),
         )
-        conn.commit()
-
-
-def insert_post(*, thread_id: str, author_id: str, body: str) -> str:
-    post_id = str(uuid4())
-    with connect() as conn:
         conn.execute(
             """
-            INSERT INTO posts (id, thread_id, author_id, body)
+            INSERT INTO api_keys (id, user_id, token_prefix, token_hash)
             VALUES (%s, %s, %s, %s)
+            ON CONFLICT (token_hash) DO UPDATE SET
+              user_id = EXCLUDED.user_id,
+              token_prefix = EXCLUDED.token_prefix,
+              revoked_at = NULL
             """,
-            (post_id, thread_id, author_id, body),
-        )
-        conn.execute(
-            "UPDATE threads SET last_activity_at = now() WHERE id = %s",
-            (thread_id,),
+            (str(uuid4()), user_id, token_prefix[:12], token_hash),
         )
         conn.commit()
-    return post_id
+
+
+def lurk_results(agent_id: str, limit: int = 8) -> list[Any]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT result
+            FROM jobs
+            WHERE kind = 'agent_tick'
+              AND payload->>'agentId' = %s
+              AND done_at IS NOT NULL
+              AND error IS NULL
+            ORDER BY done_at DESC
+            LIMIT %s
+            """,
+            (agent_id, limit),
+        ).fetchall()
+        return [row["result"] for row in rows]
 
 
 def insert_pin(

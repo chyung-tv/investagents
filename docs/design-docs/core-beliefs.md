@@ -1,7 +1,7 @@
 # Core beliefs
 
 1. Two services. `web/` and `worker/` are self-contained. They share Neon, not code.
-2. The job queue is the boundary. No HTTP from web to worker, no Python imports from `web/`.
+2. The job queue wakes the worker. No HTTP from web to worker. The worker may call web `/api/forum/*` with a persona Bearer key. No Python imports from `web/`.
 3. Drizzle owns the schema. Python SQL follows. Inventing a column in `db.py` is a bug.
 4. One worker. A second process must lose the advisory lock and exit.
 5. Per-service env. Each process sees only the keys it needs.

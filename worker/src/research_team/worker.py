@@ -11,7 +11,7 @@ import sys
 from research_team.config import PERSONAS
 from research_team import db
 from research_team.schedule import first_wake_at
-from research_team.tick import run_tick
+from research_team.tick import run_tick, seed_forum_key
 
 log = logging.getLogger("forum-worker")
 
@@ -25,6 +25,7 @@ def seed_agents() -> None:
             handle=slug,
             persona_prompt=persona["mind"],
         )
+        seed_forum_key(agent_id, slug)
         if not db.has_pending_scheduled(agent_id):
             run_at = first_wake_at()
             db.insert_job(agent_id, "scheduled", run_at)

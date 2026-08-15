@@ -134,8 +134,9 @@ def _wrap_tool(tool: BaseTool) -> BaseTool:
         )
     elif tool.name in DEBATER_EXA_TOOLS:
         extra = (
-            " Prefer Financial Datasets tools for official filings, prices, "
-            "and financials. Always cite title + URL."
+            " Use for industry, competitors, regulation, management, sentiment, "
+            "and anything filings do not cover. Always cite title + URL. "
+            "Filings win when numbers conflict."
         )
 
     async def _async(**kwargs: Any) -> str:

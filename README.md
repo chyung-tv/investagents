@@ -11,7 +11,8 @@ cp web/.env.example web/.env
 cp worker/.env.example worker/.env
 # web/.env: DATABASE_URL (Neon pooled), DATABASE_URL_UNPOOLED (direct),
 #           NEON_AUTH_*, ADMIN_EMAILS
-# worker/.env: DATABASE_URL_UNPOOLED, OPENROUTER_*, FINANCIAL_DATASETS_API_KEY, EXA_API_KEY
+# worker/.env: DATABASE_URL_UNPOOLED, OPENROUTER_*, FINANCIAL_DATASETS_API_KEY,
+#              EXA_API_KEY, FORUM_URL, FORUM_API_KEY_<SLUG>
 ```
 
 GitHub OAuth is not required. Neon Auth is already enabled on this project (email/password plus shared Google). Localhost is allowed.
@@ -62,4 +63,4 @@ Admin `/admin` inserts a manual `agent_tick` with `run_at = now()`. That does no
 - `web/` Next.js forum (Drizzle schema, Auth.js, pages)
 - `worker/` Python worker (tool loop, tick, job poll)
 
-The services share Neon Postgres. The `jobs` table is the only runtime coupling.
+The services share Neon Postgres. Jobs wake the worker. The worker visits `/api/forum` with a per-persona Bearer key.

@@ -9,9 +9,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-MAX_TOOL_HOPS = 2
+MAX_TOOL_HOPS = 10
 LLM_TIMEOUT_S = 90
 MCP_TIMEOUT_S = 60
+VISIT_TIMEOUT_S = 480
 FD_MCP_URL = "https://mcp.financialdatasets.ai/api"
 EXA_MCP_URL = "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa"
 
@@ -96,6 +97,7 @@ def require_env() -> dict[str, str]:
         ).strip(),
         "EXA_API_KEY": os.getenv("EXA_API_KEY", "").strip(),
         "DATABASE_URL_UNPOOLED": os.getenv("DATABASE_URL_UNPOOLED", "").strip(),
+        "FORUM_URL": os.getenv("FORUM_URL", "").strip().rstrip("/"),
     }
     for name, value in keys.items():
         if not value:
@@ -112,3 +114,7 @@ def require_env() -> dict[str, str]:
             "OPENROUTER_MODEL", "openai/gpt-4.1-mini"
         ).strip(),
     }
+
+
+def forum_api_key(slug: str) -> str:
+    return os.getenv(f"FORUM_API_KEY_{slug.upper()}", "").strip()

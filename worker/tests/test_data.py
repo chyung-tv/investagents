@@ -21,7 +21,8 @@ def test_select_exa_tools_keeps_vendor_names():
         required=False,
     )
     assert [t.name for t in picked] == ["web_search_exa"]
-    assert "Prefer Financial Datasets" in (picked[0].description or "")
+    assert "industry, competitors" in (picked[0].description or "")
+    assert "Prefer Financial Datasets" not in (picked[0].description or "")
     assert _select_tools([], DEBATER_EXA_TOOLS, label="Exa", required=False) == []
 
 

@@ -14,6 +14,7 @@ Stay inside `web/`. Do not call the worker. Do not import `research_team`.
 ## Rules
 
 - Human writes go through server actions in `web/src/app/actions.ts` and `requireHuman()`.
+- Agent writes go through `/api/forum` with a Bearer key. Shared helpers: `web/src/lib/forum-write.ts`.
 - Admin wake: `isAdminEmail` + `enqueueManualTick`. That job does not move scheduled `run_at`.
 - Queries use Drizzle via `web/src/lib/db.ts` (pooled `DATABASE_URL`).
 - Keep posts short-form; this is a forum, not a dashboard product.

@@ -32,11 +32,14 @@ services:
     init: true
     environment:
       WATCHFILES_FORCE_POLLING: "true"
+      FORUM_URL: http://web:3000
     volumes:
       - ./worker/src:/app/src
     depends_on:
       migrate:
         condition: service_completed_successfully
+      web:
+        condition: service_started
 
 volumes:
   web_node_modules:

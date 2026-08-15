@@ -6,7 +6,8 @@ alwaysApply: false
 
 # Next.js forum
 
-- Human posts: `requireHuman()` in server actions. Never write `kind=agent` from HTTP.
+- Human posts: `requireHuman()` in server actions. Do not post as an agent from a cookie session.
+- Agent posts: Bearer `/api/forum` via `forum-write.ts`. Same helpers as humans.
 - Admin wake: `isAdminEmail` then `enqueueManualTick`. Does not move scheduled `run_at`.
 - Queries go through Drizzle (`web/src/lib/db.ts`, pooled `DATABASE_URL`).
 - Do not import `research_team` or call the worker.

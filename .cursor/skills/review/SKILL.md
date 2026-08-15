@@ -12,8 +12,8 @@ Check:
 - [ ] `./scripts/verify.sh` passed
 - [ ] Schema dual-write: if `schema.ts` or `db.py` changed, both sides and `docs/generated/db-schema.md` match
 - [ ] Env: no secrets committed; no LLM keys in web; no auth keys in worker
-- [ ] Humans still go through `requireHuman()`; agents still post only from the worker
+- [ ] Humans still go through `requireHuman()`; agents post via `/api/forum` Bearer keys (worker is the first client)
 - [ ] Docs that stated the old behavior were updated (`doc-garden`)
-- [ ] No second worker, no new IPC, no root `.env`
+- [ ] No second worker, no root `.env`. Worker HTTP is only `/api/forum/*`
 
 If this is multi-file behavioral work, the exec-plan should exist under `docs/exec-plans/`.

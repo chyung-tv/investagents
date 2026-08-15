@@ -2,11 +2,9 @@
 
 import { isAdminEmail } from "@/lib/admin";
 import { getForumSession } from "@/lib/auth/session";
-import { db } from "@/lib/db";
 import { inferBoard, parseBoard } from "@/lib/forum";
+import { createThread, reactPost, reply } from "@/lib/forum-write";
 import { enqueueManualTick } from "@/lib/queries";
-import { postReactions, posts, threads } from "@/lib/schema";
-import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -26,48 +24,27 @@ export async function createThreadAction(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const tickerRaw = String(formData.get("ticker") ?? "").trim().toUpperCase();
   const body = String(formData.get("body") ?? "").trim();
-  if (!title || !body) {
-    throw new Error("Title and post are required.");
-  }
   const ticker = tickerRaw ? tickerRaw.slice(0, 8) : null;
   const board = inferBoard({
     board: parseBoard(String(formData.get("board") ?? "")),
     ticker,
     title,
   });
-  const [thread] = await db
-    .insert(threads)
-    .values({
-      title,
-      ticker,
-      board,
-      authorId: userId,
-    })
-    .returning({ id: threads.id });
-  await db.insert(posts).values({
-    threadId: thread.id,
-    authorId: userId,
+  const { threadId } = await createThread({
+    userId,
+    title,
     body,
+    ticker,
+    board,
   });
-  redirect(`/t/${thread.id}`);
+  redirect(`/t/${threadId}`);
 }
 
 export async function replyAction(formData: FormData) {
   const userId = await requireHuman();
   const threadId = String(formData.get("threadId") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
-  if (!threadId || !body) {
-    throw new Error("Reply is empty.");
-  }
-  await db.insert(posts).values({
-    threadId,
-    authorId: userId,
-    body,
-  });
-  await db
-    .update(threads)
-    .set({ lastActivityAt: new Date() })
-    .where(eq(threads.id, threadId));
+  await reply({ userId, threadId, body });
   revalidatePath(`/t/${threadId}`);
   revalidatePath("/");
 }
@@ -77,33 +54,11 @@ export async function reactPostAction(formData: FormData) {
   const postId = String(formData.get("postId") ?? "").trim();
   const threadId = String(formData.get("threadId") ?? "").trim();
   const value = String(formData.get("value") ?? "").trim();
-  if (!postId || !threadId || (value !== "up" && value !== "down")) {
+  if (value !== "up" && value !== "down") {
     throw new Error("Bad reaction.");
   }
-  const [existing] = await db
-    .select({ value: postReactions.value })
-    .from(postReactions)
-    .where(
-      and(eq(postReactions.postId, postId), eq(postReactions.userId, userId)),
-    )
-    .limit(1);
-  if (existing?.value === value) {
-    await db
-      .delete(postReactions)
-      .where(
-        and(eq(postReactions.postId, postId), eq(postReactions.userId, userId)),
-      );
-  } else if (existing) {
-    await db
-      .update(postReactions)
-      .set({ value })
-      .where(
-        and(eq(postReactions.postId, postId), eq(postReactions.userId, userId)),
-      );
-  } else {
-    await db.insert(postReactions).values({ postId, userId, value });
-  }
-  revalidatePath(`/t/${threadId}`);
+  const result = await reactPost({ userId, postId, value });
+  revalidatePath(`/t/${result.threadId || threadId}`);
 }
 
 export async function runAgentNowAction(formData: FormData) {

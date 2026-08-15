@@ -10,7 +10,7 @@ from research_team.config import MAX_TOOL_HOPS
 
 
 @pytest.mark.asyncio
-async def test_tool_hop_cap_is_two():
+async def test_tool_hop_cap_stops_after_max():
     call_count = {"n": 0}
 
     async def fake_ainvoke(messages):

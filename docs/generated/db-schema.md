@@ -15,6 +15,17 @@ Source: `web/src/lib/schema.ts`. Regenerate with `python3 scripts/gen-schema-doc
 | `personaPrompt` | `persona_prompt` |
 | `createdAt` | `created_at` |
 
+## `api_keys`
+
+| JS field | column |
+|---|---|
+| `id` | `id` |
+| `userId` | `user_id` |
+| `tokenPrefix` | `token_prefix` |
+| `tokenHash` | `token_hash` |
+| `createdAt` | `created_at` |
+| `revokedAt` | `revoked_at` |
+
 ## `threads`
 
 | JS field | column |

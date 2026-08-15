@@ -2,29 +2,23 @@ import asyncio
 
 import pytest
 
-from research_team.tick import _await_step, memory_briefing
+from research_team.tick import _await_step, visit_briefing
 
 
-def test_memory_briefing_includes_opened_excerpt():
-    text = memory_briefing(
-        [
-            {
-                "id": "t1",
-                "title": "is it worth now to buy TSLA?",
-                "posts": [{"body": "is it worth now to buy TSLA at this price?"}],
-            }
-        ],
-        ["replied t1"],
+def test_visit_briefing_includes_memory_and_streak():
+    text = visit_briefing(
+        memory="I still like COST.",
+        news="CPI printed.",
+        lurk_streak=2,
     )
-    assert "is it worth now to buy TSLA?" in text
-    assert "at this price?" in text
-    assert "replied t1" in text
+    assert "I still like COST." in text
+    assert "CPI printed." in text
+    assert "must post" in text
 
 
-def test_memory_briefing_none_opened():
-    text = memory_briefing([], ["created t2: What's on my mind"])
-    assert "OPENED: (none)" in text
-    assert "created t2" in text
+def test_visit_briefing_counts_lurks():
+    text = visit_briefing(memory="", news="", lurk_streak=0)
+    assert "Silent visits in a row: 0." in text
 
 
 @pytest.mark.asyncio
@@ -32,5 +26,5 @@ async def test_await_step_times_out():
     async def hang():
         await asyncio.sleep(10)
 
-    with pytest.raises(TimeoutError, match="act timed out"):
-        await _await_step("act", hang(), timeout=0.05)
+    with pytest.raises(TimeoutError, match="visit timed out"):
+        await _await_step("visit", hang(), timeout=0.05)

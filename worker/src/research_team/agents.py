@@ -1,29 +1,36 @@
-"""Persona speaker with a capped bind_tools loop."""
+"""Persona visitor: capped bind_tools loop, then structured VisitEnd."""
 
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import Any
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import BaseTool
 from langchain_openrouter import ChatOpenRouter
 
 from research_team.config import DISCLAIMER, LLM_TIMEOUT_S, MAX_TOOL_HOPS, require_env
 from research_team.data import run_tool
+from research_team.forum_client import FORUM_TOOL_NAMES
+from research_team.schedule import VisitEnd
 
-FORUM_RULES = """This is a public investment forum, not a research memo.
-A short paragraph or two. You may **bold** a ticker or a number.
-One punch, one fact, one receipt (title + link) if you looked something up.
-No bullet essays. No headings. No 'in conclusion'. No repeating the last message.
-If the SHARED BOARD already has the filing or headline, cite it — do not search again.
-If a tool fails, say so in one line and keep talking. Never invent prices.
-"""
+VISIT_PROMPT = """{mind}
+You are visiting a public investment forum as this account. Use the same verbs a human has, plus research.
 
-SPEAKER_PROMPT = """{mind}
-{forum_rules}
-You may use tools (filings, news, prices, web_search_exa / web_fetch_exa). Max a couple look-ups.
+Forum tools: list_threads, read_thread, create_thread, reply, react_post.
+Research: filings, prices, financials, get_news, web_search_exa, web_fetch_exa.
 For get_filing_items, item values MUST be like Item-1, Item-1A, Item-7 (never "Part I, Item 1").
+
+Think like a critical analyst before you speak: business model, moat, industry structure, management, competitors, secular drivers, and the numbers.
+Use Exa for the world around the numbers (industry, peers, regulation, sentiment, why customers pick them). Query for what is missing from the thread, not another print of the last price.
+Use Financial Datasets for filings, prices, financials. If they conflict, filings win; cite the source.
+If the thread already has a receipt, cite it. Do not search again.
+
+Public posts stay forum voice: 1-3 short paragraphs, your personality. No CFA memo. No headings. No 'in conclusion'. When you name a company, include at least one qualitative claim. Bold a ticker or a number when it earns it.
+Quote a floor with reply(quote_post_id=...). Quote a thread by quoting floor 1. Like or dislike with react_post. Like a thread by voting on floor 1.
+
+Prefer a public act (post, quote-reply, or vote). You may lurk only if you will explain why in the notebook. After two silent visits you must post.
+
+When you are done, stop calling tools.
 {disclaimer}
 """
 
@@ -32,7 +39,6 @@ PinFn = Callable[[str, str, str], Awaitable[None]]
 
 def get_model() -> ChatOpenRouter:
     env = require_env()
-    # timeout is milliseconds in langchain-openrouter
     return ChatOpenRouter(
         model=env["OPENROUTER_MODEL"],
         temperature=0.4,
@@ -55,29 +61,6 @@ def _text(content: object) -> str:
                 parts.append(str(block))
         return "\n".join(p for p in parts if p)
     return str(content)
-
-
-def format_pins(pins: list[dict[str, Any]], cap: int = 10) -> str:
-    if not pins:
-        return "(empty)"
-    chunks = []
-    for note in pins[:cap]:
-        chunks.append(
-            f"[{note.get('speaker_id', 'pin')}] {note.get('tool')} {note.get('query')}\n"
-            f"{str(note.get('excerpt', ''))[:900]}"
-        )
-    return "\n\n".join(chunks)
-
-
-def format_posts(posts: list[dict[str, Any]]) -> str:
-    if not posts:
-        return "(no posts yet)"
-    lines = []
-    for post in posts:
-        who = post.get("handle") or post.get("name") or "anon"
-        kind = post.get("kind") or "human"
-        lines.append(f"[{who} · {kind}] {str(post.get('body', ''))[:800]}")
-    return "\n\n".join(lines)
 
 
 async def _tool_loop(
@@ -111,43 +94,55 @@ async def _tool_loop(
                     result = await run_tool(
                         tool, args if isinstance(args, dict) else {}
                     )
-                if on_pin is not None:
+                if on_pin is not None and name not in FORUM_TOOL_NAMES:
                     await on_pin(name, str(args), result)
                 messages.append(
                     ToolMessage(content=result, tool_call_id=tid, name=name)
                 )
         final = await model.ainvoke(messages)
-        return _text(final.content) or last_text or "Couldn't finish that look-up."
+        messages.append(final)
+        return _text(final.content) or last_text or "Stopped after hop cap."
     except Exception as exc:  # noqa: BLE001
         return f"Couldn't finish that look-up ({exc.__class__.__name__}). Moving on."
 
 
-async def speak_post(
+async def run_visit(
     *,
     mind: str,
-    job: str,
-    memory: str,
-    posts: list[dict[str, Any]],
-    pins: list[dict[str, Any]],
+    briefing: str,
     tools: list[BaseTool],
     on_pin: PinFn | None = None,
-) -> str:
+) -> list:
     model = get_model()
-    user_content = (
-        f"{job}\n\n"
-        f"PRIVATE NOTES (do not paste this into the post):\n{memory or '(empty)'}\n\n"
-        f"SHARED BOARD:\n{format_pins(pins)}\n\n"
-        f"THREAD:\n{format_posts(posts)}\n\n"
-        "Reply with ONLY the forum post body."
-    )
     messages: list = [
+        SystemMessage(content=VISIT_PROMPT.format(mind=mind, disclaimer=DISCLAIMER)),
+        HumanMessage(content=briefing),
+    ]
+    await _tool_loop(model, tools, messages, on_pin=on_pin)
+    return messages
+
+
+async def end_visit(
+    *,
+    mind: str,
+    messages: list,
+    had_public_write: bool,
+) -> VisitEnd:
+    model = get_model().with_structured_output(VisitEnd)
+    extra = (
+        "You made a public write. silent_reason should be null."
+        if had_public_write
+        else "You made no public write. silent_reason is required."
+    )
+    result: VisitEnd = await model.ainvoke([
         SystemMessage(
-            content=SPEAKER_PROMPT.format(
-                mind=mind,
-                forum_rules=FORUM_RULES,
-                disclaimer=DISCLAIMER,
+            content=(
+                mind + "\nRewrite the private notebook after this visit. "
+                "4-8 sentences, first person. Stance, tickers, grudges, open questions. "
+                "Do not write a forum post.\n" + DISCLAIMER
             )
         ),
-        HumanMessage(content=user_content),
-    ]
-    return await _tool_loop(model, tools, messages, on_pin=on_pin)
+        *messages[1:],
+        HumanMessage(content=f"Visit over. {extra}"),
+    ])
+    return result

@@ -7,7 +7,14 @@ import {
   parseBoard,
   parseOrder,
   pinsForFloor,
+  quoteSnippet,
 } from "./forum.ts";
+test("quoteSnippet matches the composer prefix", () => {
+  assert.equal(
+    quoteSnippet({ floor: 3, body: "  hello   world  " }),
+    "> #3 hello world",
+  );
+});
 
 test("parseBoard accepts known rooms", () => {
   assert.equal(parseBoard("equities"), "equities");

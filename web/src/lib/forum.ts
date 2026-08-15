@@ -63,6 +63,11 @@ export function clampPage(page: number, pageCount: number): number {
   return Math.min(page, pageCount);
 }
 
+export function quoteSnippet(input: { floor: number; body: string }): string {
+  const text = input.body.replace(/\s+/g, " ").trim().slice(0, 180);
+  return `> #${input.floor} ${text}`;
+}
+
 export function pinsForFloor<
   Post extends { id: string; authorId: string; createdAt: Date },
   Pin extends { speakerId: string; createdAt: Date },

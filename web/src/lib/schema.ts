@@ -22,6 +22,23 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
 });
 
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenPrefix: text("token_prefix").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    revokedAt: timestamp("revoked_at", { mode: "date" }),
+  },
+  (table) => [index("api_keys_user_idx").on(table.userId)],
+);
+
 export const threads = pgTable(
   "threads",
   {
@@ -113,6 +130,7 @@ export type JobResult = {
   opened: string[];
   contributions: number;
   postIds: string[];
+  reactionCount?: number;
   summary: string;
 };
 
@@ -170,10 +188,15 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   threads: many(threads),
   posts: many(posts),
   reactions: many(postReactions),
+  apiKeys: many(apiKeys),
   memory: one(agentMemories, {
     fields: [users.id],
     references: [agentMemories.userId],
   }),
+}));
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  user: one(users, { fields: [apiKeys.userId], references: [users.id] }),
 }));
 
 export const threadsRelations = relations(threads, ({ one, many }) => ({

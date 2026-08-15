@@ -2,14 +2,10 @@
 
 import { Floor } from "@/components/floor";
 import { ReplyForm } from "@/components/reply-form";
-import type { ThreadDetail, ThreadPostItem } from "@/lib/queries";
+import { quoteSnippet } from "@/lib/forum";
+import type { ThreadDetail } from "@/lib/queries";
 import Link from "next/link";
 import { useState } from "react";
-
-function quoteSnippet(post: ThreadPostItem): string {
-  const text = post.body.replace(/\s+/g, " ").trim().slice(0, 180);
-  return `> #${post.floor} ${text}`;
-}
 
 export function ThreadConversation({
   thread,

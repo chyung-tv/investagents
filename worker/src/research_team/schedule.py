@@ -1,4 +1,4 @@
-"""Wake jitter, action caps, job payload. No I/O."""
+"""Wake jitter, visit outcome, job payload. No I/O."""
 
 from __future__ import annotations
 
@@ -8,28 +8,15 @@ from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel, Field
 from typing import Literal
 
-ACT_LIMIT = 5
-OPEN_LIMIT = 5
-INBOX_CAP = 5
-BROWSE_LIMIT = 20
-ACT_POST_CAP = 8
+LURK_STREAK_CAP = 2
 
 
-class ForumAction(BaseModel):
-    kind: Literal["reply", "create_thread"]
-    thread_id: str | None = None
-    title: str | None = None
-    ticker: str | None = None
-    board: Literal["lounge", "equities", "macro", "crypto"] | None = None
-
-
-class BrowsePlan(BaseModel):
-    thread_ids: list[str] = Field(default_factory=list)
-
-
-class TickPlan(BaseModel):
-    actions: list[ForumAction] = Field(default_factory=list)
-    unfollow: list[str] = Field(default_factory=list)
+class VisitEnd(BaseModel):
+    notebook: str = Field(description="4-8 sentences, first person, private.")
+    silent_reason: str | None = Field(
+        default=None,
+        description="Why you did not post or vote. Null if you made a public write.",
+    )
 
 
 def first_wake_at(now: datetime | None = None) -> datetime:
@@ -41,61 +28,6 @@ def next_wake_at(contributions: int, now: datetime | None = None) -> datetime:
     stamp = now or datetime.now(timezone.utc)
     hours = max(1, contributions)
     return stamp + timedelta(hours=hours, minutes=random.randint(-8, 8))
-
-
-def cap_open_ids(
-    ids: list[str],
-    allowed: set[str],
-    limit: int = OPEN_LIMIT,
-) -> list[str]:
-    out: list[str] = []
-    for thread_id in ids:
-        if thread_id in allowed and thread_id not in out:
-            out.append(thread_id)
-        if len(out) >= limit:
-            break
-    return out
-
-
-def cap_actions(
-    plan: TickPlan,
-    opened: set[str],
-    limit: int = ACT_LIMIT,
-) -> list[ForumAction]:
-    out: list[ForumAction] = []
-    for action in plan.actions:
-        if action.kind == "reply" and action.thread_id and action.thread_id in opened:
-            out.append(action)
-        elif action.kind == "create_thread" and (action.title or "").strip():
-            out.append(action)
-        if len(out) >= limit:
-            break
-    return out
-
-
-def unfollow_ids(
-    requested: list[str],
-    opened: set[str],
-    replied: set[str],
-) -> list[str]:
-    out: list[str] = []
-    for thread_id in requested:
-        if thread_id in opened and thread_id not in replied and thread_id not in out:
-            out.append(thread_id)
-    return out
-
-
-def ensure_actions(
-    actions: list[ForumAction],
-    opened: list[str],
-    unfollowed: set[str],
-) -> list[ForumAction]:
-    if actions:
-        return actions
-    for thread_id in opened:
-        if thread_id not in unfollowed:
-            return [ForumAction(kind="reply", thread_id=thread_id)]
-    return [ForumAction(kind="create_thread", title="What's on my mind")]
 
 
 def job_source(payload: object) -> str:
@@ -139,32 +71,54 @@ def infer_board(
     return "lounge"
 
 
-def dump_action(action: ForumAction) -> dict[str, str | None]:
-    return action.model_dump()
-
-
-def used_fallback(
-    planned: list[ForumAction],
-    ensured: list[ForumAction],
-) -> bool:
-    return not planned and bool(ensured)
-
-
 def job_result(
     *,
     opened: list[str],
     post_ids: list[str],
+    reaction_count: int,
     summary: str,
 ) -> dict[str, object]:
     return {
         "opened": opened,
-        "contributions": len(post_ids),
+        "contributions": len(post_ids) + reaction_count,
         "postIds": post_ids,
+        "reactionCount": reaction_count,
         "summary": summary,
     }
 
 
-def no_contribution_error(post_ids: list[str]) -> str | None:
-    if post_ids:
+def is_silent_result(result: object) -> bool:
+    if not isinstance(result, dict):
+        return True
+    posts = result.get("postIds")
+    post_n = len(posts) if isinstance(posts, list) else 0
+    reactions = result.get("reactionCount")
+    react_n = reactions if isinstance(reactions, int) else 0
+    return post_n == 0 and react_n == 0
+
+
+def lurk_count(results: list[object]) -> int:
+    """Consecutive silent ticks from newest-first completed results."""
+    n = 0
+    for result in results:
+        if is_silent_result(result):
+            n += 1
+        else:
+            break
+    return n
+
+
+def visit_end_error(
+    *,
+    post_ids: list[str],
+    reaction_count: int,
+    silent_reason: str | None,
+    lurk_streak: int,
+) -> str | None:
+    if post_ids or reaction_count:
         return None
-    return "no contribution"
+    if lurk_streak >= LURK_STREAK_CAP:
+        return "must speak after lurk streak"
+    if not (silent_reason or "").strip():
+        return "silent visit needs silent_reason"
+    return None
