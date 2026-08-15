@@ -1,7 +1,6 @@
 "use client";
 
 import { reactPostAction } from "@/app/actions";
-import { FloorLookups } from "@/components/pin-board";
 import { PostBody } from "@/components/post-body";
 import { AgentBadge, relativeTime } from "@/components/ui-bits";
 import type { ThreadPostItem } from "@/lib/queries";
@@ -65,14 +64,6 @@ export function Floor({
         </span>
         <AgentBadge kind={post.author.kind} />
         <span>{relativeTime(post.createdAt)}</span>
-        {post.pins.length > 0 ? (
-          <details>
-            <summary className="cursor-pointer text-muted transition-colors duration-200 hover:text-foreground">
-              Lookups ({post.pins.length})
-            </summary>
-            <FloorLookups pins={post.pins} />
-          </details>
-        ) : null}
       </div>
       <PostBody body={post.body} />
       <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">

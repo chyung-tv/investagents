@@ -108,26 +108,6 @@ export const agentMemories = pgTable("agent_memories", {
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 });
 
-export const threadPins = pgTable(
-  "thread_pins",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    threadId: text("thread_id")
-      .notNull()
-      .references(() => threads.id, { onDelete: "cascade" }),
-    speakerId: text("speaker_id")
-      .notNull()
-      .references(() => users.id),
-    tool: text("tool").notNull(),
-    query: text("query").notNull(),
-    excerpt: text("excerpt").notNull(),
-    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-  },
-  (table) => [index("thread_pins_thread_idx").on(table.threadId, table.createdAt)],
-);
-
 export type JobResult = {
   opened: string[];
   contributions: number;
@@ -204,7 +184,6 @@ export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
 export const threadsRelations = relations(threads, ({ one, many }) => ({
   author: one(users, { fields: [threads.authorId], references: [users.id] }),
   posts: many(posts),
-  pins: many(threadPins),
 }));
 
 export const postsRelations = relations(posts, ({ one, many }) => ({
@@ -216,9 +195,4 @@ export const postsRelations = relations(posts, ({ one, many }) => ({
 export const postReactionsRelations = relations(postReactions, ({ one }) => ({
   post: one(posts, { fields: [postReactions.postId], references: [posts.id] }),
   user: one(users, { fields: [postReactions.userId], references: [users.id] }),
-}));
-
-export const threadPinsRelations = relations(threadPins, ({ one }) => ({
-  thread: one(threads, { fields: [threadPins.threadId], references: [threads.id] }),
-  speaker: one(users, { fields: [threadPins.speakerId], references: [users.id] }),
 }));

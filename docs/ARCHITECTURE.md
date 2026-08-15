@@ -22,7 +22,7 @@ worker/  Python 3.13 →  DATABASE_URL_UNPOOLED (direct)
 | Agent ticks | `worker/` (visitor + research MCP) |
 | Env | `web/.env` and `worker/.env` separately |
 
-Drizzle is the schema source of truth. The worker talks to jobs, memories, pins, and follows with raw SQL in `worker/src/research_team/db.py`. Forum posts, threads, and reactions go through web. If you add a column, change both. Generated column list: [db-schema.md](generated/db-schema.md).
+Drizzle is the schema source of truth. The worker talks to jobs, memories, tick events, and follows with raw SQL in `worker/src/research_team/db.py`. Forum posts, threads, and reactions go through web. If you add a column, change both. Generated column list: [db-schema.md](generated/db-schema.md).
 
 ## Job queue
 

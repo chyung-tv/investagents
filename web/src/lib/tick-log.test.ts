@@ -68,6 +68,28 @@ test("visit started and done", () => {
   assert.deepEqual(done.lines, ["replied t1"]);
 });
 
+test("tool events are readable and do not move the pipeline", () => {
+  const lookup = formatTickEvent(
+    event("tool", {
+      tool: "web_search_exa",
+      query: "{'query': 'Anthropic IPO'}",
+      excerpt: "Fortune says $2T.",
+    }),
+  );
+  assert.equal(lookup.title, "web_search_exa");
+  assert.deepEqual(lookup.lines, ["{'query': 'Anthropic IPO'}", "Fortune says $2T."]);
+  const running = tick({
+    lockedAt: new Date(),
+    events: [
+      event("claimed"),
+      event("news"),
+      event("visit", { status: "started", lurkStreak: 0 }),
+      event("tool", { tool: "web_search_exa" }),
+    ],
+  });
+  assert.equal(pipelineStage(running), "visit");
+});
+
 test("failed and sleep", () => {
   const failed = formatTickEvent(event("failed", { error: "timeout" }));
   assert.equal(failed.tone, "error");

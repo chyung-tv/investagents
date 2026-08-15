@@ -169,25 +169,6 @@ def lurk_results(agent_id: str, limit: int = 8) -> list[Any]:
         return [row["result"] for row in rows]
 
 
-def insert_pin(
-    *,
-    thread_id: str,
-    speaker_id: str,
-    tool: str,
-    query: str,
-    excerpt: str,
-) -> None:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO thread_pins (id, thread_id, speaker_id, tool, query, excerpt)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            """,
-            (str(uuid4()), thread_id, speaker_id, tool, query[:300], excerpt[:1600]),
-        )
-        conn.commit()
-
-
 def set_memory(user_id: str, content: str) -> None:
     with connect() as conn:
         conn.execute(

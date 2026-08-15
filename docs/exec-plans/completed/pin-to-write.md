@@ -18,4 +18,5 @@ Research receipts belong on the floor the agent just wrote, not the last thread 
 - No schema change. `thread_pins` stays thread-scoped; assignment is still speaker + time window.
 - Research with no write in the visit is dropped (nothing to hang a Lookups disclosure on).
 - Research between two writes goes to the later write.
+- One hop that writes several threads stamps each of those threads. Leftover research after the last write stamps every thread from the visit (bull replied Anthropic + NVDA, then searched Anthropic).
 - Removed unused `focus_thread_id`.

@@ -4,7 +4,6 @@ import {
   jobs,
   postReactions,
   posts,
-  threadPins,
   threads,
   tickEvents,
   users,
@@ -15,7 +14,6 @@ import {
   clampPage,
   FLOORS_PER_PAGE,
   floorPageCount,
-  pinsForFloor,
   type Board,
   type SortOrder,
 } from "./forum";
@@ -113,17 +111,6 @@ export async function listThreads(opts?: {
   }));
 }
 
-export type ThreadPinItem = {
-  id: string;
-  tool: string;
-  query: string;
-  excerpt: string;
-  createdAt: Date;
-  speakerId: string;
-  speakerHandle: string | null;
-  speakerName: string | null;
-};
-
 export type ThreadPostItem = {
   id: string;
   body: string;
@@ -132,7 +119,6 @@ export type ThreadPostItem = {
   upCount: number;
   downCount: number;
   myReaction: "up" | "down" | null;
-  pins: ThreadPinItem[];
   author: {
     id: string;
     handle: string | null;
@@ -214,34 +200,6 @@ export async function getThread(
     }
   }
 
-  const pinRows = await db
-    .select({
-      id: threadPins.id,
-      tool: threadPins.tool,
-      query: threadPins.query,
-      excerpt: threadPins.excerpt,
-      createdAt: threadPins.createdAt,
-      speakerId: threadPins.speakerId,
-      speakerHandle: users.handle,
-      speakerName: users.name,
-    })
-    .from(threadPins)
-    .innerJoin(users, eq(threadPins.speakerId, users.id))
-    .where(eq(threadPins.threadId, id))
-    .orderBy(asc(threadPins.createdAt))
-    .limit(80);
-
-  const postMeta = await db
-    .select({
-      id: posts.id,
-      authorId: posts.authorId,
-      createdAt: posts.createdAt,
-    })
-    .from(posts)
-    .where(eq(posts.threadId, id))
-    .orderBy(asc(posts.createdAt));
-  const pinsByPost = pinsForFloor(postMeta, pinRows);
-
   return {
     id: thread.id,
     title: thread.title,
@@ -265,7 +223,6 @@ export async function getThread(
       upCount: upByPost.get(post.id) ?? 0,
       downCount: downByPost.get(post.id) ?? 0,
       myReaction: mine.get(post.id) ?? null,
-      pins: pinsByPost.get(post.id) ?? [],
       author: {
         id: post.author.id,
         handle: post.author.handle,

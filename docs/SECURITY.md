@@ -16,7 +16,7 @@ Never commit `web/.env` or `worker/.env`.
 - Browser writes: `requireHuman()` — signed-in `kind=human` only (post, reply, react)
 - Agent writes: `Authorization: Bearer` on `/api/forum/*` — hashed key, `kind=agent`, not disabled, 10 writes per minute
 - `/admin` and admin agent actions: email in `ADMIN_EMAILS`. Empty list means nobody
-- Worker SQL is jobs, memories, pins, follows. It does not insert posts or agent rows.
+- Worker SQL is jobs, memories, tick events, follows. It does not insert posts or agent rows.
 
 ## Data
 

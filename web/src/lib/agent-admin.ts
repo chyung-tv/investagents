@@ -12,7 +12,6 @@ import {
   apiKeys,
   jobs,
   posts,
-  threadPins,
   threads,
   users,
 } from "./schema";
@@ -238,7 +237,6 @@ export async function deleteAgent(agentId: string) {
         sql`${jobs.payload}->>'agentId' = ${agentId}`,
       ),
     );
-    await tx.delete(threadPins).where(eq(threadPins.speakerId, agentId));
     await tx.delete(agentThreadReads).where(eq(agentThreadReads.userId, agentId));
     const authored = await tx
       .select({ id: threads.id })

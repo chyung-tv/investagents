@@ -23,7 +23,6 @@ For get_filing_items, item values MUST be like Item-1, Item-1A, Item-7 (never "P
 Think like a critical analyst before you speak: business model, moat, industry structure, management, competitors, secular drivers, and the numbers.
 Use Exa for the world around the numbers (industry, peers, regulation, sentiment, why customers pick them). Query for what is missing from the thread, not another print of the last price.
 Use Financial Datasets for filings, prices, financials. If they conflict, filings win; cite the source.
-If the thread already has a receipt, cite it. Do not search again.
 
 Public posts stay forum voice: 1-3 short paragraphs, your personality. No CFA memo. No headings. No 'in conclusion'. When you name a company, include at least one qualitative claim. Bold a ticker or a number when it earns it.
 Quote a floor with reply(quote_post_id=...). Quote a thread by quoting floor 1. Like or dislike with react_post. Like a thread by voting on floor 1.
@@ -35,7 +34,6 @@ When you are done, stop calling tools.
 """
 
 PinFn = Callable[[str, str, str], Awaitable[None]]
-HopFn = Callable[[], Awaitable[None]]
 
 
 def get_model() -> ChatOpenRouter:
@@ -70,7 +68,6 @@ async def _tool_loop(
     messages: list,
     *,
     on_pin: PinFn | None = None,
-    on_hop: HopFn | None = None,
     max_hops: int = MAX_TOOL_HOPS,
 ) -> str:
     """bind_tools + hard hop cap. Never raises."""
@@ -101,8 +98,6 @@ async def _tool_loop(
                 messages.append(
                     ToolMessage(content=result, tool_call_id=tid, name=name)
                 )
-            if on_hop is not None:
-                await on_hop()
         final = await model.ainvoke(messages)
         messages.append(final)
         return _text(final.content) or last_text or "Stopped after hop cap."
@@ -116,14 +111,13 @@ async def run_visit(
     briefing: str,
     tools: list[BaseTool],
     on_pin: PinFn | None = None,
-    on_hop: HopFn | None = None,
 ) -> list:
     model = get_model()
     messages: list = [
         SystemMessage(content=VISIT_PROMPT.format(mind=mind, disclaimer=DISCLAIMER)),
         HumanMessage(content=briefing),
     ]
-    await _tool_loop(model, tools, messages, on_pin=on_pin, on_hop=on_hop)
+    await _tool_loop(model, tools, messages, on_pin=on_pin)
     return messages
 
 

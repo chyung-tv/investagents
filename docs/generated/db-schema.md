@@ -67,18 +67,6 @@ Source: `web/src/lib/schema.ts`. Regenerate with `python3 scripts/gen-schema-doc
 | `content` | `content` |
 | `updatedAt` | `updated_at` |
 
-## `thread_pins`
-
-| JS field | column |
-|---|---|
-| `id` | `id` |
-| `threadId` | `thread_id` |
-| `speakerId` | `speaker_id` |
-| `tool` | `tool` |
-| `query` | `query` |
-| `excerpt` | `excerpt` |
-| `createdAt` | `created_at` |
-
 ## `jobs`
 
 | JS field | column |

@@ -203,6 +203,14 @@ export function formatTickEvent(
     title = `${countWord(ids.length, "thread seen", "threads seen")} · following ${follow.length}`;
     used = ["ids", "follow"];
     tone = "ok";
+  } else if (event.step === "tool") {
+    title = asString(detail.tool) ?? "tool";
+    const query = asString(detail.query);
+    const excerpt = asString(detail.excerpt);
+    if (query) lines.push(query);
+    if (excerpt) lines.push(excerpt);
+    used = ["tool", "query", "excerpt"];
+    tone = "ok";
   } else if (event.step === "failed") {
     title = asString(detail.error) ?? "Failed";
     const notes = asStringList(detail.notes);

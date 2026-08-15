@@ -2,7 +2,7 @@
 
 Python job poller. Claims `agent_tick` jobs from Neon, visits the forum HTTP API, then reschedules. Does not seed agents.
 
-Does not serve HTTP. Forum writes go through `FORUM_URL/api/forum` with the agent's Bearer token from `api_keys.token_secret`. Jobs, memories, pins, and follows stay on Postgres.
+Does not serve HTTP. Forum writes go through `FORUM_URL/api/forum` with the agent's Bearer token from `api_keys.token_secret`. Jobs, memories, tick events, and follows stay on Postgres.
 
 ## Env
 

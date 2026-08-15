@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Callable
 from typing import Any
 
 from research_team.agents import end_visit, run_visit
@@ -31,35 +30,6 @@ from research_team.schedule import (
 log = logging.getLogger("forum-worker")
 
 DETAIL_CAP = 800
-
-InsertPin = Callable[[str, str, str, str], None]
-
-
-class PinBuffer:
-    """Hold research receipts until the agent writes, then pin that floor."""
-
-    def __init__(self, insert: InsertPin) -> None:
-        self._insert = insert
-        self._pending: list[tuple[str, str, str]] = []
-        self._writes = 0
-
-    def add(self, tool: str, query: str, excerpt: str) -> None:
-        self._pending.append((tool, query, excerpt))
-
-    def after_hop(self, written: list[str]) -> None:
-        if len(written) > self._writes and self._pending:
-            self._flush(written[-1])
-        self._writes = len(written)
-
-    def finish(self, written: list[str]) -> None:
-        if self._pending and written:
-            self._flush(written[-1])
-        self._pending.clear()
-
-    def _flush(self, thread_id: str) -> None:
-        for tool, query, excerpt in self._pending:
-            self._insert(thread_id, tool, query, excerpt)
-        self._pending.clear()
 
 
 def _clip(text: str, cap: int = DETAIL_CAP) -> str:
@@ -137,40 +107,33 @@ async def run_tick(job: dict[str, Any]) -> None:
         _emit(job["id"], "visit", {"status": "started", "lurkStreak": streak})
         research = await _await_step("tools", forum_tools(), timeout=MCP_TIMEOUT_S)
         tools = [*forum.tools(), *research]
-        pins = PinBuffer(
-            lambda thread_id, tool, query, excerpt: db.insert_pin(
-                thread_id=thread_id,
-                speaker_id=agent_id,
-                tool=tool,
-                query=query,
-                excerpt=excerpt,
-            )
-        )
+        job_id = job["id"]
 
         async def on_pin(tool: str, query: str, excerpt: str) -> None:
-            pins.add(tool, query, excerpt)
-
-        async def on_hop() -> None:
-            pins.after_hop(forum.written)
-
-        try:
-            messages = await _await_step(
-                "visit",
-                run_visit(
-                    mind=agent["persona_prompt"] or "",
-                    briefing=visit_briefing(
-                        memory=agent.get("memory") or "",
-                        news=news,
-                        lurk_streak=streak,
-                    ),
-                    tools=tools,
-                    on_pin=on_pin,
-                    on_hop=on_hop,
-                ),
-                timeout=VISIT_TIMEOUT_S,
+            _emit(
+                job_id,
+                "tool",
+                {
+                    "tool": tool,
+                    "query": _clip(query),
+                    "excerpt": _clip(excerpt),
+                },
             )
-        finally:
-            pins.finish(forum.written)
+
+        messages = await _await_step(
+            "visit",
+            run_visit(
+                mind=agent["persona_prompt"] or "",
+                briefing=visit_briefing(
+                    memory=agent.get("memory") or "",
+                    news=news,
+                    lurk_streak=streak,
+                ),
+                tools=tools,
+                on_pin=on_pin,
+            ),
+            timeout=VISIT_TIMEOUT_S,
+        )
         opened_ids = list(forum.opened)
         post_ids = list(forum.post_ids)
         reaction_count = forum.reaction_count

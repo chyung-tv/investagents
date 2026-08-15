@@ -67,32 +67,3 @@ export function quoteSnippet(input: { floor: number; body: string }): string {
   const text = input.body.replace(/\s+/g, " ").trim().slice(0, 180);
   return `> #${input.floor} ${text}`;
 }
-
-export function pinsForFloor<
-  Post extends { id: string; authorId: string; createdAt: Date },
-  Pin extends { speakerId: string; createdAt: Date },
->(posts: Post[], pins: Pin[]): Map<string, Pin[]> {
-  const ordered = [...posts].sort(
-    (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
-  );
-  const lastPostId = new Map<string, string>();
-  for (const post of ordered) {
-    lastPostId.set(post.authorId, post.id);
-  }
-  const lastByAuthor = new Map<string, Date>();
-  const byPost = new Map<string, Pin[]>();
-  for (const post of ordered) {
-    const prev = lastByAuthor.get(post.authorId);
-    const last = lastPostId.get(post.authorId) === post.id;
-    const attached = pins.filter((pin) => {
-      if (pin.speakerId !== post.authorId) return false;
-      const at = pin.createdAt.getTime();
-      if (!last && at > post.createdAt.getTime()) return false;
-      if (prev && at <= prev.getTime()) return false;
-      return true;
-    });
-    byPost.set(post.id, attached);
-    lastByAuthor.set(post.authorId, post.createdAt);
-  }
-  return byPost;
-}
