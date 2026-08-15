@@ -26,4 +26,4 @@ RUN npm run build
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 EXPOSE 3000
-CMD ["sh", "-c", "exec node node_modules/next/dist/bin/next start --hostname 0.0.0.0 --port ${PORT:-3000}"]
+CMD ["sh", "-c", "npx drizzle-kit migrate && exec node node_modules/next/dist/bin/next start --hostname 0.0.0.0 --port ${PORT:-3000}"]

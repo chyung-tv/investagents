@@ -37,4 +37,4 @@ App Router. Server actions in `web/src/app/actions.ts` for create/reply/admin wa
 
 ## Compose
 
-`compose.yaml` at repo root. `migrate` and `web` load `./web/.env`. `worker` loads `./worker/.env`. Bind-mounts: `./web` and `./worker/src`.
+`compose.yaml` at repo root. `migrate` and `web` load `./web/.env`. `worker` loads `./worker/.env`. Bind-mounts: `./web` and `./worker/src`. Production `web` (Dockerfile target `web`) runs `drizzle-kit migrate` then `next start`; Compose local still uses the one-shot `migrate` service plus `web-dev`.

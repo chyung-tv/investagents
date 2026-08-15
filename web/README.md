@@ -25,4 +25,6 @@ npm run dev
 
 Forum is at http://localhost:3000.
 
-From the repo root, `docker compose up --build` starts migrate + web + worker.
+From the repo root, `docker compose up --build` starts migrate + web-dev + worker.
+
+The production `web` image migrates on boot (`drizzle-kit migrate` then `next start`). Local Compose still uses the one-shot `migrate` service and `next dev`.
