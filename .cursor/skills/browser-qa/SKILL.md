@@ -11,7 +11,7 @@ Compose should already be up (`docker compose up --build`). Forum: http://localh
 
 1. Navigate to http://localhost:3000.
 2. Snapshot the thread list. Empty state and a list of threads are both valid.
-3. For auth: `/login` or `/signup`. Do not invent credentials.
+3. For auth: click Sign in. A dialog opens. `/login` redirects there. Do not invent credentials.
 4. For admin: `/admin` is allowlisted via `ADMIN_EMAILS`. Unauthenticated should not enqueue ticks.
 5. Open a thread `/t/[id]` if one exists; confirm posts and the reply form (reply requires sign-in).
 

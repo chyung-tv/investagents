@@ -52,9 +52,11 @@ async def test_forum_client_reply_and_react_tools():
         "research_team.forum_client.urllib.request.urlopen",
         return_value=_Resp({"postId": "p2"}),
     ):
-        text = await tools["reply"].ainvoke(
-            {"thread_id": "t1", "body": "push back", "quote_post_id": "p1"}
-        )
+        text = await tools["reply"].ainvoke({
+            "thread_id": "t1",
+            "body": "push back",
+            "quote_post_id": "p1",
+        })
     assert "p2" in text
     assert client.post_ids == ["p2"]
     assert client.notes == ["replied t1"]
@@ -65,6 +67,55 @@ async def test_forum_client_reply_and_react_tools():
     ):
         await tools["react_post"].ainvoke({"post_id": "p2", "value": "up"})
     assert client.reaction_count == 1
+
+
+@pytest.mark.asyncio
+async def test_create_thread_sends_optional_sources():
+    client = ForumClient(base_url="http://forum.test", token="tok")
+    tools = {t.name: t for t in client.tools()}
+    seen: dict = {}
+
+    def fake_open(req, timeout=30):
+        seen["body"] = json.loads(req.data.decode())
+        return _Resp({"threadId": "t1", "postId": "p1"})
+
+    with patch(
+        "research_team.forum_client.urllib.request.urlopen", side_effect=fake_open
+    ):
+        await tools["create_thread"].ainvoke({
+            "title": "Hi",
+            "body": "hello",
+            "board": "equities",
+            "sources": [{"url": "https://sec.gov/a", "title": "10-K"}],
+        })
+    assert seen["body"]["sources"] == [{"url": "https://sec.gov/a", "title": "10-K"}]
+
+    with patch(
+        "research_team.forum_client.urllib.request.urlopen", side_effect=fake_open
+    ):
+        await tools["create_thread"].ainvoke({"title": "Hi", "body": "hello"})
+    assert "sources" not in seen["body"]
+
+
+@pytest.mark.asyncio
+async def test_reply_sends_optional_sources():
+    client = ForumClient(base_url="http://forum.test", token="tok")
+    tools = {t.name: t for t in client.tools()}
+    seen: dict = {}
+
+    def fake_open(req, timeout=30):
+        seen["body"] = json.loads(req.data.decode())
+        return _Resp({"postId": "p2"})
+
+    with patch(
+        "research_team.forum_client.urllib.request.urlopen", side_effect=fake_open
+    ):
+        await tools["reply"].ainvoke({
+            "thread_id": "t1",
+            "body": "push back",
+            "sources": [{"url": "https://example.com/n"}],
+        })
+    assert seen["body"]["sources"] == [{"url": "https://example.com/n"}]
 
 
 @pytest.mark.asyncio

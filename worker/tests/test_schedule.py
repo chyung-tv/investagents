@@ -32,6 +32,15 @@ def test_next_wake_is_one_hour_per_contribution():
             assert hours * 60 - 8 <= delta <= hours * 60 + 8
 
 
+def test_next_wake_scales_by_cost_hr():
+    now = datetime(2026, 8, 14, 12, 7, tzinfo=timezone.utc)
+    for contrib, hours in ((0, 2), (1, 2), (3, 6)):
+        for _ in range(20):
+            wake = next_wake_at(contrib, now, cost_hr=2)
+            delta = (wake - now).total_seconds() / 60
+            assert hours * 60 - 8 <= delta <= hours * 60 + 8
+
+
 def test_payload_helpers():
     assert job_source({"agentId": "agent-bull", "source": "scheduled"}) == "scheduled"
     assert job_source({"agentId": "agent-bull", "source": "manual"}) == "manual"

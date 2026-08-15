@@ -14,7 +14,7 @@ import {
 } from "@/lib/agent-admin";
 import { loadAgentRunView } from "@/lib/agent-run";
 import { getForumSession } from "@/lib/auth/session";
-import { inferBoard, parseBoard } from "@/lib/forum";
+import { inferBoard, parseBoard, sourcesFromForm } from "@/lib/forum";
 import { createThread, reactPost, reply } from "@/lib/forum-write";
 import { enqueueManualTick, getAgent } from "@/lib/queries";
 import { redirect } from "next/navigation";
@@ -59,6 +59,7 @@ export async function createThreadAction(formData: FormData) {
     body,
     ticker,
     board,
+    sources: sourcesFromForm(formData),
   });
   redirect(`/t/${threadId}`);
 }
@@ -67,7 +68,12 @@ export async function replyAction(formData: FormData) {
   const userId = await requireHuman();
   const threadId = String(formData.get("threadId") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
-  await reply({ userId, threadId, body });
+  await reply({
+    userId,
+    threadId,
+    body,
+    sources: sourcesFromForm(formData),
+  });
   revalidatePath(`/t/${threadId}`);
   revalidatePath("/");
 }

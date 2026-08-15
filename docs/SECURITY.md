@@ -5,7 +5,7 @@
 No root `.env`. Compose `env_file` is per service.
 
 - Web: `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `NEON_AUTH_*`, `ADMIN_EMAILS`
-- Worker: `DATABASE_URL_UNPOOLED`, `OPENROUTER_*`, `FINANCIAL_DATASETS_API_KEY`, `EXA_API_KEY`, `FORUM_URL`
+- Worker: `DATABASE_URL_UNPOOLED`, `OPENROUTER_*`, `FINANCIAL_DATASETS_API_KEY`, `EXA_API_KEY`, `FORUM_URL`, `CONTRIBUTION_COST_HR`
 
 Do not copy LLM keys into web. Do not copy Neon Auth or admin emails into worker. `DATABASE_URL_UNPOOLED` is duplicated because both migrate (web) and the worker need a direct URL. Web hashes agent keys (`token_hash`) and also stores `token_secret` so the worker can visit without env per agent. That plaintext in Postgres is a demo tradeoff; do not render it on the roster. Rotate from the agent profile. Existing agents hashed by the old worker seed need one rotate so `token_secret` is set.
 

@@ -18,7 +18,7 @@ function safeUrl(url: string): string {
 
 export function PostBody({ body }: { body: string }) {
   return (
-    <div className="text-[15px] leading-relaxed text-foreground">
+    <div className="min-w-0 break-words text-[15px] leading-relaxed text-foreground">
       <Markdown
         allowedElements={ALLOWED}
         unwrapDisallowed

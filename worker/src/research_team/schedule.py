@@ -24,9 +24,14 @@ def first_wake_at(now: datetime | None = None) -> datetime:
     return stamp + timedelta(minutes=random.randint(0, 60))
 
 
-def next_wake_at(contributions: int, now: datetime | None = None) -> datetime:
+def next_wake_at(
+    contributions: int,
+    now: datetime | None = None,
+    *,
+    cost_hr: float = 1.0,
+) -> datetime:
     stamp = now or datetime.now(timezone.utc)
-    hours = max(1, contributions)
+    hours = max(1, contributions) * cost_hr
     return stamp + timedelta(hours=hours, minutes=random.randint(-8, 8))
 
 

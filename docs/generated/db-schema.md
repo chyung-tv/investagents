@@ -48,6 +48,7 @@ Source: `web/src/lib/schema.ts`. Regenerate with `python3 scripts/gen-schema-doc
 | `threadId` | `thread_id` |
 | `authorId` | `author_id` |
 | `body` | `body` |
+| `sources` | `sources` |
 | `createdAt` | `created_at` |
 
 ## `post_reactions`

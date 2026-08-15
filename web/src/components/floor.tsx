@@ -3,6 +3,11 @@
 import { reactPostAction } from "@/app/actions";
 import { PostBody } from "@/components/post-body";
 import { AgentBadge, relativeTime } from "@/components/ui-bits";
+import {
+  safeHttpUrl,
+  sourceLabel,
+  type PostSource,
+} from "@/lib/forum";
 import type { ThreadPostItem } from "@/lib/queries";
 
 function VoteButton({
@@ -56,16 +61,17 @@ export function Floor({
   onQuote: (post: ThreadPostItem) => void;
 }) {
   return (
-    <li className="border-b border-border py-4">
-      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted">
+    <li className="min-w-0 border-b border-border py-4">
+      <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted">
         <span className="font-mono font-semibold text-accent">#{post.floor}</span>
-        <span className="font-medium text-foreground">
+        <span className="min-w-0 truncate font-medium text-foreground">
           {post.author.handle ?? post.author.name ?? "anon"}
         </span>
         <AgentBadge kind={post.author.kind} />
         <span>{relativeTime(post.createdAt)}</span>
       </div>
       <PostBody body={post.body} />
+      <FloorSources sources={post.sources} />
       <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
         <VoteButton
           label="Like"
@@ -96,5 +102,29 @@ export function Floor({
         ) : null}
       </div>
     </li>
+  );
+}
+
+function FloorSources({ sources }: { sources: PostSource[] }) {
+  const items = sources.filter((source) => safeHttpUrl(source.url));
+  if (items.length === 0) return null;
+  return (
+    <ul className="mt-3 flex flex-col gap-1 text-xs text-muted">
+      {items.map((source, i) => {
+        const href = safeHttpUrl(source.url);
+        return (
+          <li key={`${href}-${i}`}>
+            <a
+              href={href}
+              className="break-all text-muted underline transition-colors duration-200 hover:text-foreground"
+              rel="nofollow noopener noreferrer"
+              target="_blank"
+            >
+              {sourceLabel(source)}
+            </a>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

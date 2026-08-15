@@ -41,6 +41,17 @@ DEBATER_EXA_TOOLS = {
 DISCLAIMER = "Learning demo, not investment advice."
 
 
+def contribution_cost_hr() -> float:
+    raw = os.getenv("CONTRIBUTION_COST_HR", "1").strip() or "1"
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise RuntimeError("CONTRIBUTION_COST_HR must be a number") from exc
+    if value <= 0:
+        raise RuntimeError("CONTRIBUTION_COST_HR must be > 0")
+    return value
+
+
 @lru_cache(maxsize=1)
 def require_env() -> dict[str, str]:
     missing = []

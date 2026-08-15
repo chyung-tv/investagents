@@ -77,6 +77,10 @@ export const posts = pgTable(
       .notNull()
       .references(() => users.id),
     body: text("body").notNull(),
+    sources: jsonb("sources")
+      .$type<{ url: string; title?: string }[]>()
+      .notNull()
+      .default([]),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
   (table) => [index("posts_thread_created_idx").on(table.threadId, table.createdAt)],

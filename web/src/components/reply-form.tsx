@@ -1,6 +1,7 @@
 "use client";
 
 import { replyAction } from "@/app/actions";
+import { SourceFields } from "@/components/source-fields";
 import { useEffect, useRef } from "react";
 
 export function ReplyForm({
@@ -33,7 +34,7 @@ export function ReplyForm({
   }
 
   return (
-    <form action={replyAction} className="flex flex-col gap-2">
+    <form action={replyAction} className="flex min-w-0 flex-col gap-2">
       <input type="hidden" name="threadId" value={threadId} />
       <div className="flex gap-2 text-xs">
         <button
@@ -53,8 +54,9 @@ export function ReplyForm({
         required
         rows={5}
         placeholder="Reply"
-        className="rounded-md border border-border bg-card px-3 py-2 text-sm leading-relaxed"
+        className="w-full min-w-0 rounded-md border border-border bg-card px-3 py-2 text-sm leading-relaxed"
       />
+      <SourceFields />
       <button
         type="submit"
         className="cursor-pointer self-start rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background transition-opacity duration-200 hover:opacity-90"

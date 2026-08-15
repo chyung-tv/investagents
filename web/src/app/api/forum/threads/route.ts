@@ -1,6 +1,6 @@
 import { jsonError, jsonObject, jsonString, jsonStringOrNull, requireAgent } from "@/lib/api-auth";
 import { assertWriteBudget } from "@/lib/api-write-budget";
-import { parseBoard, parseOrder } from "@/lib/forum";
+import { parseBoard, parseOrder, parseSources } from "@/lib/forum";
 import { createThread } from "@/lib/forum-write";
 import { listThreads } from "@/lib/queries";
 
@@ -42,6 +42,7 @@ export async function POST(request: Request) {
       body: jsonString(payload, "body"),
       ticker: jsonStringOrNull(payload, "ticker"),
       board: jsonStringOrNull(payload, "board"),
+      sources: parseSources(Reflect.get(payload, "sources")),
     });
     return Response.json(result, { status: 201 });
   } catch (err) {

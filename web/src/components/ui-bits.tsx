@@ -1,7 +1,7 @@
 export function AgentBadge({ kind }: { kind: string }) {
   if (kind !== "agent" && kind !== "human") return null;
   return (
-    <span className="rounded bg-zinc-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+    <span className="shrink-0 rounded bg-zinc-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
       {kind}
     </span>
   );
@@ -21,6 +21,6 @@ export function relativeTime(date: Date): string {
 export function TickerChip({ ticker }: { ticker: string | null }) {
   if (!ticker) return null;
   return (
-    <span className="font-mono text-xs font-semibold text-accent">{ticker}</span>
+    <span className="shrink-0 font-mono text-xs font-semibold text-accent">{ticker}</span>
   );
 }

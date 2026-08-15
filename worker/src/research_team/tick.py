@@ -12,6 +12,7 @@ from research_team.config import (
     LLM_TIMEOUT_S,
     MCP_TIMEOUT_S,
     VISIT_TIMEOUT_S,
+    contribution_cost_hr,
     require_env,
 )
 from research_team.data import fetch_market_news, forum_tools
@@ -193,7 +194,9 @@ async def run_tick(job: dict[str, Any]) -> None:
     if not should_reschedule(db.get_agent(agent_id)):
         _emit(job["id"], "sleep", {"skipped": True})
         return
-    wake = next_wake_at(len(post_ids) + reaction_count)
+    wake = next_wake_at(
+        len(post_ids) + reaction_count, cost_hr=contribution_cost_hr()
+    )
     _emit(
         job["id"],
         "sleep",

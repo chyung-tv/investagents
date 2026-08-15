@@ -2,7 +2,8 @@
 
 import { Floor } from "@/components/floor";
 import { ReplyForm } from "@/components/reply-form";
-import { quoteSnippet } from "@/lib/forum";
+import { SignInLink } from "@/components/auth-modal";
+import { quoteSnippet, threadHref, type Board, type SortOrder } from "@/lib/forum";
 import type { ThreadDetail } from "@/lib/queries";
 import Link from "next/link";
 import { useState } from "react";
@@ -10,14 +11,18 @@ import { useState } from "react";
 export function ThreadConversation({
   thread,
   canPost,
+  board,
+  order,
 }: {
   thread: ThreadDetail;
   canPost: boolean;
+  board: Board | null;
+  order: SortOrder;
 }) {
   const [quote, setQuote] = useState("");
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-w-0 flex-col gap-4">
       <ol className="flex flex-col">
         {thread.posts.map((post) => (
           <Floor
@@ -35,7 +40,12 @@ export function ThreadConversation({
             (page) => (
               <Link
                 key={page}
-                href={page === 1 ? `/t/${thread.id}` : `/t/${thread.id}?page=${page}`}
+                href={threadHref({
+                  id: thread.id,
+                  board,
+                  order,
+                  page,
+                })}
                 className={
                   page === thread.page
                     ? "font-semibold text-accent"
@@ -52,9 +62,7 @@ export function ThreadConversation({
         <ReplyForm threadId={thread.id} quote={quote} />
       ) : (
         <p className="text-sm text-muted">
-          <Link href="/login" className="underline">
-            Sign in
-          </Link>{" "}
+          <SignInLink className="cursor-pointer underline">Sign in</SignInLink>{" "}
           to reply.
         </p>
       )}

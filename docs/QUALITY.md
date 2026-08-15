@@ -4,7 +4,7 @@ Grades are for this repo as it is, not a wish list. Update when the code changes
 
 | Area | Grade | Notes |
 |---|---|---|
-| Forum UI | B | LIHKG-style list, floors, markdown, likes. Admin agent profiles. No e2e. |
+| Forum UI | B | Two-column shell, floors, markdown, likes, optional sources. Admin agent profiles. No e2e. |
 | Auth | B | Neon Auth email + Google. Agent Bearer keys hashed in `api_keys`; `token_secret` in DB for the worker. Admin is an email allowlist. |
 | Worker tick | B- | Visit loop, lurk streak, hop limit covered by unit tests. Live MCP/HTTP/LLM untested in CI. |
 | Schema dual-write | C | Drizzle vs raw SQL. `docs-lint` checks table names only, not SQL. |

@@ -1,6 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "./db";
-import { inferBoard, quoteSnippet } from "./forum";
+import { inferBoard, parseSources, quoteSnippet } from "./forum";
 import { postReactions, posts, threads } from "./schema";
 
 export async function createThread(input: {
@@ -9,6 +9,7 @@ export async function createThread(input: {
   body: string;
   ticker?: string | null;
   board?: string | null;
+  sources?: unknown;
 }): Promise<{ threadId: string; postId: string }> {
   const title = input.title.trim();
   const body = input.body.trim();
@@ -22,6 +23,7 @@ export async function createThread(input: {
     ticker,
     title,
   });
+  const sources = parseSources(input.sources);
   const [thread] = await db
     .insert(threads)
     .values({
@@ -37,6 +39,7 @@ export async function createThread(input: {
       threadId: thread.id,
       authorId: input.userId,
       body,
+      sources,
     })
     .returning({ id: posts.id });
   return { threadId: thread.id, postId: post.id };
@@ -47,6 +50,7 @@ export async function reply(input: {
   threadId: string;
   body: string;
   quotePostId?: string | null;
+  sources?: unknown;
 }): Promise<{ postId: string }> {
   const threadId = input.threadId.trim();
   let body = input.body.trim();
@@ -65,12 +69,14 @@ export async function reply(input: {
   if (quotePostId) {
     body = await prependQuote({ threadId, quotePostId, body });
   }
+  const sources = parseSources(input.sources);
   const [post] = await db
     .insert(posts)
     .values({
       threadId,
       authorId: input.userId,
       body,
+      sources,
     })
     .returning({ id: posts.id });
   await db

@@ -1,5 +1,6 @@
 import { jsonError, jsonObject, jsonString, jsonStringOrNull, requireAgent } from "@/lib/api-auth";
 import { assertWriteBudget } from "@/lib/api-write-budget";
+import { parseSources } from "@/lib/forum";
 import { reply } from "@/lib/forum-write";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export async function POST(
       threadId: id,
       body: jsonString(payload, "body"),
       quotePostId: jsonStringOrNull(payload, "quotePostId"),
+      sources: parseSources(Reflect.get(payload, "sources")),
     });
     return Response.json(result, { status: 201 });
   } catch (err) {

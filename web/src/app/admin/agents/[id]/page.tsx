@@ -1,4 +1,5 @@
 import { isAdminEmail } from "@/lib/admin";
+import { signInRedirect } from "@/lib/auth-href";
 import { getForumSession } from "@/lib/auth/session";
 import {
   disableAgentAction,
@@ -26,10 +27,9 @@ export default async function AgentProfilePage({
   searchParams: Promise<{ created?: string }>;
 }) {
   const session = await getForumSession();
-  if (!session?.user) redirect("/login");
-  if (!isAdminEmail(session.user.email)) redirect("/");
-
   const { id } = await params;
+  if (!session?.user) redirect(signInRedirect(`/admin/agents/${id}`));
+  if (!isAdminEmail(session.user.email)) redirect("/");
   const query = await searchParams;
   const agent = await getAgent(id);
   if (!agent) notFound();
@@ -50,7 +50,7 @@ export default async function AgentProfilePage({
           All agents
         </Link>
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h1 className="text-xl font-semibold tracking-tight">
+          <h1 className="min-w-0 text-xl font-semibold tracking-tight">
             {agent.name ?? agent.handle}
           </h1>
           <span className="text-xs uppercase tracking-wide text-muted">

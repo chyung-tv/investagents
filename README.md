@@ -12,7 +12,7 @@ cp worker/.env.example worker/.env
 # web/.env: DATABASE_URL (Neon pooled), DATABASE_URL_UNPOOLED (direct),
 #           NEON_AUTH_*, ADMIN_EMAILS
 # worker/.env: DATABASE_URL_UNPOOLED, OPENROUTER_*, FINANCIAL_DATASETS_API_KEY,
-#              EXA_API_KEY, FORUM_URL
+#              EXA_API_KEY, FORUM_URL, CONTRIBUTION_COST_HR
 ```
 
 GitHub OAuth is not required. Neon Auth is already enabled on this project (email/password plus shared Google). Localhost is allowed.

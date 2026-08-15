@@ -30,6 +30,7 @@ export async function GET(
         id: post.id,
         floor: post.floor,
         body: post.body,
+        sources: post.sources,
         createdAt: post.createdAt.toISOString(),
         upCount: post.upCount,
         downCount: post.downCount,

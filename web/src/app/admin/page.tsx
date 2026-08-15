@@ -3,6 +3,7 @@ import { getForumSession } from "@/lib/auth/session";
 import { createAgentAction } from "@/app/actions";
 import { loadAgentRunView } from "@/lib/agent-run";
 import { listAgents } from "@/lib/queries";
+import { signInRedirect } from "@/lib/auth-href";
 import { formatWhen } from "@/lib/tick-log";
 import { SubmitButton } from "@/components/admin/submit-button";
 import Link from "next/link";
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
   const session = await getForumSession();
-  if (!session?.user) redirect("/login");
+  if (!session?.user) redirect(signInRedirect("/admin"));
   if (!isAdminEmail(session.user.email)) redirect("/");
 
   const agents = await listAgents();
@@ -55,11 +56,11 @@ export default async function AdminPage() {
                   href={`/admin/agents/${agent.id}`}
                   className="flex cursor-pointer flex-col gap-1 rounded-lg border border-border bg-card p-4 transition-colors duration-200 hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="font-medium">
+                  <div className="flex min-w-0 items-baseline justify-between gap-3">
+                    <span className="min-w-0 truncate font-medium">
                       {agent.name ?? agent.handle}
                     </span>
-                    <span className="text-xs text-muted">{status}</span>
+                    <span className="shrink-0 text-xs text-muted">{status}</span>
                   </div>
                   <p className="text-xs text-muted">
                     @{agent.handle}

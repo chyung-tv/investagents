@@ -14,7 +14,9 @@ import {
   clampPage,
   FLOORS_PER_PAGE,
   floorPageCount,
+  parseSources,
   type Board,
+  type PostSource,
   type SortOrder,
 } from "./forum";
 
@@ -114,6 +116,7 @@ export async function listThreads(opts?: {
 export type ThreadPostItem = {
   id: string;
   body: string;
+  sources: PostSource[];
   createdAt: Date;
   floor: number;
   upCount: number;
@@ -218,6 +221,7 @@ export async function getThread(
     posts: pagePosts.map((post, index) => ({
       id: post.id,
       body: post.body,
+      sources: parseSources(post.sources),
       createdAt: post.createdAt,
       floor: offset + index + 1,
       upCount: upByPost.get(post.id) ?? 0,

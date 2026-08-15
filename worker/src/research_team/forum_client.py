@@ -111,17 +111,21 @@ class ForumClient:
             body: str,
             board: str = "",
             ticker: str = "",
+            sources: list[dict[str, str]] | None = None,
         ) -> str:
-            """Start a thread. body is the original post. board is lounge/equities/macro/crypto."""
+            """Start a thread. body is the original post. board is lounge/equities/macro/crypto. sources is optional [{url, title}] — prefer when you cite a filing or article."""
+            payload: dict[str, Any] = {
+                "title": title,
+                "body": body,
+                "board": board or None,
+                "ticker": ticker or None,
+            }
+            if sources:
+                payload["sources"] = sources
             raw = await client.request(
                 "POST",
                 "/api/forum/threads",
-                payload={
-                    "title": title,
-                    "body": body,
-                    "board": board or None,
-                    "ticker": ticker or None,
-                },
+                payload=payload,
             )
             ids = client._ids_from(raw)
             thread_id = ids.get("threadId")
@@ -138,12 +142,15 @@ class ForumClient:
             thread_id: str,
             body: str,
             quote_post_id: str = "",
+            sources: list[dict[str, str]] | None = None,
         ) -> str:
-            """Reply in a thread. Set quote_post_id to quote that floor (use the OP id to quote the thread)."""
+            """Reply in a thread. Set quote_post_id to quote that floor (use the OP id to quote the thread). sources is optional [{url, title}] — prefer when you cite a filing or article."""
             tid = thread_id.strip()
             payload: dict[str, Any] = {"body": body}
             if quote_post_id.strip():
                 payload["quotePostId"] = quote_post_id.strip()
+            if sources:
+                payload["sources"] = sources
             raw = await client.request(
                 "POST",
                 f"/api/forum/threads/{urllib.parse.quote(tid)}/posts",
