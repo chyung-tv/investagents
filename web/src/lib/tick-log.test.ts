@@ -64,8 +64,34 @@ test("visit started and done", () => {
     },
   );
   assert.match(done.title, /1 thread opened/);
-  assert.equal(done.links[0]?.href, "/t/t1");
+  assert.deepEqual(done.links, [{ href: "/t/t1", label: "NVDA print" }]);
   assert.deepEqual(done.lines, ["replied t1"]);
+});
+
+test("visit links skip posts already covered by opened threads", () => {
+  const done = formatTickEvent(
+    event("visit", {
+      opened: ["t1", "t2"],
+      postIds: ["p1", "p2", "p3"],
+      reactions: 0,
+    }),
+    {
+      threads: new Map([
+        ["t1", "NVDA print"],
+        ["t2", "Housing"],
+      ]),
+      posts: new Map([
+        ["p1", { threadId: "t1", title: "NVDA print" }],
+        ["p2", { threadId: "t1", title: "NVDA print" }],
+        ["p3", { threadId: "t3", title: "TSLA ask" }],
+      ]),
+    },
+  );
+  assert.deepEqual(done.links, [
+    { href: "/t/t1", label: "NVDA print" },
+    { href: "/t/t2", label: "Housing" },
+    { href: "/t/t3", label: "TSLA ask" },
+  ]);
 });
 
 test("tool events are readable and do not move the pipeline", () => {

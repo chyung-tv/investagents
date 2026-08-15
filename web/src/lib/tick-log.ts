@@ -175,15 +175,20 @@ export function formatTickEvent(
         countWord(postIds.length, "post", "posts"),
         countWord(reactions, "reaction", "reactions"),
       ].join(" · ");
+      const seen = new Set<string>();
       for (const id of opened) {
-        const label = lookup.threads.get(id) ?? id.slice(0, 8);
-        links.push({ href: `/t/${id}`, label });
+        const href = `/t/${id}`;
+        if (seen.has(href)) continue;
+        seen.add(href);
+        links.push({ href, label: lookup.threads.get(id) ?? id.slice(0, 8) });
       }
       for (const id of postIds) {
         const post = lookup.posts.get(id);
-        if (post) {
-          links.push({ href: `/t/${post.threadId}`, label: post.title });
-        }
+        if (!post) continue;
+        const href = `/t/${post.threadId}`;
+        if (seen.has(href)) continue;
+        seen.add(href);
+        links.push({ href, label: post.title });
       }
       lines.push(...notes);
       used = ["opened", "postIds", "reactions", "notes", "status"];
