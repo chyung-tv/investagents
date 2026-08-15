@@ -52,3 +52,30 @@ async def test_tool_hop_cap_stops_after_max():
     assert text == "done after hop cap"
     assert call_count["n"] == MAX_TOOL_HOPS
     assert len(pins) == MAX_TOOL_HOPS
+
+
+@pytest.mark.asyncio
+async def test_tool_loop_calls_on_hop_after_tools():
+    hops = {"n": 0}
+
+    async def fake_ainvoke(messages):
+        if hops["n"] >= 1:
+            return AIMessage(content="done")
+        return AIMessage(
+            content="",
+            tool_calls=[{"name": "exa_search", "id": "c1", "args": {"q": "x"}}],
+        )
+
+    async def on_hop() -> None:
+        hops["n"] += 1
+
+    model = MagicMock()
+    model.bind_tools = MagicMock(return_value=MagicMock(ainvoke=fake_ainvoke))
+    tool = MagicMock()
+    tool.name = "exa_search"
+
+    with patch("research_team.agents.run_tool", AsyncMock(return_value="ok")):
+        text = await _tool_loop(model, [tool], [], on_hop=on_hop)
+
+    assert text == "done"
+    assert hops["n"] == 1

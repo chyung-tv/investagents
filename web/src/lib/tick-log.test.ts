@@ -88,7 +88,7 @@ test("pipeline and status", () => {
   assert.equal(pipelineStage(queued), "queued");
   assert.equal(tickStatus(queued), "queued");
   const running = tick({
-    lockedAt: at,
+    lockedAt: new Date(),
     events: [event("claimed"), event("news")],
   });
   assert.equal(pipelineStage(running), "news");

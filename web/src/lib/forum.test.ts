@@ -73,3 +73,13 @@ test("pins attach to the speaking floor", () => {
   assert.equal(byPost.get("p2")?.length, 0);
   assert.equal(byPost.get("p3")?.length, 1);
 });
+
+test("pins after the last floor still attach", () => {
+  const t1 = new Date("2026-08-15T01:01:00Z");
+  const t2 = new Date("2026-08-15T01:02:00Z");
+  const byPost = pinsForFloor(
+    [{ id: "p1", authorId: "burry", createdAt: t1 }],
+    [{ speakerId: "burry", createdAt: t2 }],
+  );
+  assert.equal(byPost.get("p1")?.length, 1);
+});

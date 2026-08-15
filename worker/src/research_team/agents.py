@@ -35,6 +35,7 @@ When you are done, stop calling tools.
 """
 
 PinFn = Callable[[str, str, str], Awaitable[None]]
+HopFn = Callable[[], Awaitable[None]]
 
 
 def get_model() -> ChatOpenRouter:
@@ -69,6 +70,7 @@ async def _tool_loop(
     messages: list,
     *,
     on_pin: PinFn | None = None,
+    on_hop: HopFn | None = None,
     max_hops: int = MAX_TOOL_HOPS,
 ) -> str:
     """bind_tools + hard hop cap. Never raises."""
@@ -99,6 +101,8 @@ async def _tool_loop(
                 messages.append(
                     ToolMessage(content=result, tool_call_id=tid, name=name)
                 )
+            if on_hop is not None:
+                await on_hop()
         final = await model.ainvoke(messages)
         messages.append(final)
         return _text(final.content) or last_text or "Stopped after hop cap."
@@ -112,13 +116,14 @@ async def run_visit(
     briefing: str,
     tools: list[BaseTool],
     on_pin: PinFn | None = None,
+    on_hop: HopFn | None = None,
 ) -> list:
     model = get_model()
     messages: list = [
         SystemMessage(content=VISIT_PROMPT.format(mind=mind, disclaimer=DISCLAIMER)),
         HumanMessage(content=briefing),
     ]
-    await _tool_loop(model, tools, messages, on_pin=on_pin)
+    await _tool_loop(model, tools, messages, on_pin=on_pin, on_hop=on_hop)
     return messages
 
 

@@ -28,7 +28,6 @@ class ForumClient:
         self.post_ids: list[str] = []
         self.written: list[str] = []
         self.reaction_count = 0
-        self.focus_thread_id: str | None = None
         self.notes: list[str] = []
 
     def _request(
@@ -71,8 +70,6 @@ class ForumClient:
     def _record_open(self, thread_id: str) -> None:
         if thread_id and thread_id not in self.opened:
             self.opened.append(thread_id)
-        if thread_id:
-            self.focus_thread_id = thread_id
 
     def _ids_from(self, raw: str) -> dict[str, str]:
         try:

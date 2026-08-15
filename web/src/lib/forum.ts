@@ -75,14 +75,19 @@ export function pinsForFloor<
   const ordered = [...posts].sort(
     (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
   );
+  const lastPostId = new Map<string, string>();
+  for (const post of ordered) {
+    lastPostId.set(post.authorId, post.id);
+  }
   const lastByAuthor = new Map<string, Date>();
   const byPost = new Map<string, Pin[]>();
   for (const post of ordered) {
     const prev = lastByAuthor.get(post.authorId);
+    const last = lastPostId.get(post.authorId) === post.id;
     const attached = pins.filter((pin) => {
       if (pin.speakerId !== post.authorId) return false;
       const at = pin.createdAt.getTime();
-      if (at > post.createdAt.getTime()) return false;
+      if (!last && at > post.createdAt.getTime()) return false;
       if (prev && at <= prev.getTime()) return false;
       return true;
     });
