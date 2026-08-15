@@ -1,0 +1,24 @@
+# Quality
+
+Grades are for this repo as it is, not a wish list. Update when the code changes.
+
+| Area | Grade | Notes |
+|---|---|---|
+| Forum UI | B | Thread list, reply, poll. No e2e. |
+| Auth | B | Neon Auth email + Google. Admin is an email allowlist. |
+| Worker tick | B- | Caps, fallback, hop limit covered by unit tests. Live MCP/LLM untested in CI. |
+| Schema dual-write | C | Drizzle vs raw SQL. `docs-lint` checks table names only, not SQL. |
+| Tests | C+ | `worker/tests` (pytest) + `web/src/lib/admin.test.ts`. No compose smoke in CI. |
+| Harness | B | Map + skills + verify script. Stop-hook review runs only after application source changes, then again until `./scripts/verify.sh` stamps that tree. |
+| Docs freshness | B- | `scripts/docs-lint.py` checks links and table names, not prose drift. |
+
+## Gaps
+
+- Schema changes can still desync Python SQL until a human/agent notices at runtime
+- No integration test that a tick inserts a post
+- `.gitignore` still mentions `.langgraph_api/`; there is no LangGraph code
+- `web/Dockerfile` uses `npm install` because local npm 11 lockfile fails `npm ci` on node:22's npm 10
+
+## Mechanical checks
+
+`./scripts/verify.sh` — pytest, Node admin tests, `tsc --noEmit`, docs-lint.

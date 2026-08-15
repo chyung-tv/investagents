@@ -1,0 +1,15 @@
+---
+description: Python worker conventions. Stay in worker/; raw SQL must match Drizzle; one poller.
+globs: worker/**/*.py
+alwaysApply: false
+---
+
+# Python worker
+
+- Package import is `research_team`. Run from `worker/` (`uv run python -m research_team`).
+- Do not import from `web/`. Do not add an HTTP server.
+- SQL in `db.py` must use columns from `web/src/lib/schema.ts`. If the table changed, follow the `schema-change` skill.
+- Tick must write a post (reply or create_thread). Caps live in `schedule.py`.
+- Tool loop: `MAX_TOOL_HOPS` is 2. Tool failures become strings.
+- `acquire_worker_lock` must remain: a second worker exits.
+- Tests in `worker/tests/` stay offline (no API keys).

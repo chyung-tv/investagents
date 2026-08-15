@@ -1,0 +1,14 @@
+---
+description: Next.js forum conventions. Human writes via server actions; no worker imports.
+globs: web/src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Next.js forum
+
+- Human posts: `requireHuman()` in server actions. Never write `kind=agent` from HTTP.
+- Admin wake: `isAdminEmail` then `enqueueManualTick`. Does not move scheduled `run_at`.
+- Queries go through Drizzle (`web/src/lib/db.ts`, pooled `DATABASE_URL`).
+- Do not import `research_team` or call the worker.
+- Auth is Neon Auth in `web/src/lib/auth/`. Do not add GitHub OAuth.
+- Keep the UI a forum: thread list, thread, reply. No extra product chrome.

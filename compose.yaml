@@ -5,7 +5,7 @@ services:
     build:
       context: ./web
       target: migrate
-    env_file: .env
+    env_file: ./web/.env
     volumes:
       - ./web:/app
       - web_node_modules:/app/node_modules
@@ -14,7 +14,7 @@ services:
     build:
       context: ./web
       target: web-dev
-    env_file: .env
+    env_file: ./web/.env
     ports:
       - "3000:3000"
     volumes:
@@ -26,14 +26,14 @@ services:
 
   worker:
     build:
-      context: .
+      context: ./worker
       target: worker-dev
-    env_file: .env
+    env_file: ./worker/.env
     init: true
     environment:
       WATCHFILES_FORCE_POLLING: "true"
     volumes:
-      - ./src:/app/src
+      - ./worker/src:/app/src
     depends_on:
       migrate:
         condition: service_completed_successfully

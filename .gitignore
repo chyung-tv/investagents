@@ -1,6 +1,7 @@
 # Python-generated files
 __pycache__/
 *.py[oc]
+.pytest_cache
 build/
 dist/
 wheels/
@@ -11,7 +12,10 @@ wheels/
 
 # Secrets / local
 .env
-.langgraph_api/
+web/.env
 web/.env.local
+worker/.env
+.langgraph_api/
 web/.next
 node_modules
+.cursor/hooks/state/

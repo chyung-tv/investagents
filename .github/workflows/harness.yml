@@ -1,0 +1,26 @@
+name: harness
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: astral-sh/setup-uv@v5
+      - name: Install worker
+        run: uv sync --dev
+        working-directory: worker
+      - name: Install web
+        run: npm install
+        working-directory: web
+      - name: Verify
+        run: ./scripts/verify.sh

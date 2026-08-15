@@ -104,7 +104,7 @@ def require_env() -> dict[str, str]:
         raise RuntimeError(
             "Missing env vars: "
             + ", ".join(missing)
-            + ". Copy .env.example to .env and fill them in."
+            + ". Copy worker/.env.example to worker/.env and fill them in."
         )
     return {
         **keys,

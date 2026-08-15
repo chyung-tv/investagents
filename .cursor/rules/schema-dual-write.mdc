@@ -1,0 +1,18 @@
+---
+description: Shared Neon schema is Drizzle-first; worker SQL must stay in lockstep.
+globs: web/src/lib/schema.ts,worker/src/research_team/db.py,web/drizzle/**
+alwaysApply: false
+---
+
+# Schema dual-write
+
+`web/src/lib/schema.ts` is the source of truth. `worker/src/research_team/db.py` is a second writer against the same tables.
+
+When this rule is in context:
+
+1. Change Drizzle first.
+2. `npm run db:generate` and `npm run db:migrate` from `web/` (unpooled URL).
+3. Update Python SQL in the same change.
+4. Run `python3 scripts/gen-schema-doc.py`.
+
+Do not add a column only in Python. Do not split into a second database.

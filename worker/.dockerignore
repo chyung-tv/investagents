@@ -5,7 +5,6 @@ __pycache__
 *.py[oc]
 .pytest_cache
 tests
-web
 node_modules
 *.egg-info
 build
