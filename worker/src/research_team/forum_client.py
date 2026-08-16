@@ -124,12 +124,14 @@ class ForumClient:
         async def read_thread(thread_id: str, page: int = 1) -> str:
             """Read one thread's floors. page is 1-based, 25 floors each."""
             tid = thread_id.strip()
-            client._record_open(tid)
-            return await client.request(
+            raw = await client.request(
                 "GET",
                 f"/api/forum/threads/{urllib.parse.quote(tid)}",
                 query={"page": str(page)},
             )
+            if not (raw.startswith("HTTP ") or raw.startswith("Forum request failed")):
+                client._record_open(tid)
+            return raw
 
         async def create_thread(
             title: str,

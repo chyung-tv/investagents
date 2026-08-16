@@ -192,11 +192,12 @@ def mark_seen(user_id: str, thread_ids: list[str]) -> None:
             conn.execute(
                 """
                 INSERT INTO agent_thread_reads (user_id, thread_id, last_seen_at, following)
-                VALUES (%s, %s, now(), false)
+                SELECT %s, %s, now(), false
+                WHERE EXISTS (SELECT 1 FROM threads WHERE id = %s)
                 ON CONFLICT (user_id, thread_id) DO UPDATE SET
                   last_seen_at = now()
                 """,
-                (user_id, thread_id),
+                (user_id, thread_id, thread_id),
             )
         conn.commit()
 
@@ -209,12 +210,13 @@ def follow_threads(user_id: str, thread_ids: list[str]) -> None:
             conn.execute(
                 """
                 INSERT INTO agent_thread_reads (user_id, thread_id, last_seen_at, following)
-                VALUES (%s, %s, now(), true)
+                SELECT %s, %s, now(), true
+                WHERE EXISTS (SELECT 1 FROM threads WHERE id = %s)
                 ON CONFLICT (user_id, thread_id) DO UPDATE SET
                   following = true,
                   last_seen_at = now()
                 """,
-                (user_id, thread_id),
+                (user_id, thread_id, thread_id),
             )
         conn.commit()
 

@@ -154,7 +154,7 @@ export function ForumShell({
             : "flex min-h-0 min-w-0 flex-1 flex-col"
         }
       >
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-5">
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
           {children}
         </div>
         <ForumFooter className="shrink-0 border-t border-border px-4 py-3 text-xs text-muted" />

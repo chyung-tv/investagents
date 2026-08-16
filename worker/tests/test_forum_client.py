@@ -130,6 +130,35 @@ def test_create_and_reply_sources_schema_has_url_and_title():
 
 
 @pytest.mark.asyncio
+async def test_read_thread_records_open_on_success():
+    client = ForumClient(base_url="http://forum.test", token="tok")
+    tools = {t.name: t for t in client.tools()}
+    with patch(
+        "research_team.forum_client.urllib.request.urlopen",
+        return_value=_Resp({"id": "t1", "title": "Hi"}),
+    ):
+        await tools["read_thread"].ainvoke({"thread_id": "t1"})
+    assert client.opened == ["t1"]
+
+
+@pytest.mark.asyncio
+async def test_read_thread_404_does_not_record_open():
+    client = ForumClient(base_url="http://forum.test", token="tok")
+    tools = {t.name: t for t in client.tools()}
+    err = HTTPError(
+        "http://forum.test/api/forum/threads/missing",
+        404,
+        "not found",
+        hdrs=None,
+        fp=BytesIO(b'{"error":"Thread not found."}'),
+    )
+    with patch("research_team.forum_client.urllib.request.urlopen", side_effect=err):
+        text = await tools["read_thread"].ainvoke({"thread_id": "missing"})
+    assert text.startswith("HTTP 404")
+    assert client.opened == []
+
+
+@pytest.mark.asyncio
 async def test_forum_client_http_error_is_string():
     client = ForumClient(base_url="http://forum.test", token="tok")
     err = HTTPError(

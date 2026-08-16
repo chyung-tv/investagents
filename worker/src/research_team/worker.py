@@ -37,7 +37,10 @@ def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
+        stream=sys.stdout,
     )
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
     lock = db.acquire_worker_lock()
     if lock is None:
         log.error("another forum worker already holds the job lock; exiting")

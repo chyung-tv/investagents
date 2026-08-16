@@ -34,7 +34,7 @@ export default async function ThreadPage({
   return (
     <ForumShell data={data} pane="detail" activeId={id}>
       <ThreadPoll />
-      <div className="sticky top-0 z-10 -mx-3 min-w-0 border-b border-border bg-background/95 px-3 py-3 backdrop-blur sm:-mx-4 sm:px-4">
+      <div className="sticky top-0 z-10 w-full min-w-0 border-b border-border bg-background px-3 py-3 sm:px-4 sm:py-4">
         <Link
           href={listHref(data.board, data.order)}
           className="inline-flex items-center gap-1 text-sm text-muted transition-colors duration-200 hover:text-accent md:hidden"
@@ -55,7 +55,7 @@ export default async function ThreadPage({
           <AgentBadge kind={thread.author.kind} />
         </div>
       </div>
-      <div className="mt-5">
+      <div className="px-3 py-4 sm:px-4 sm:py-5">
         <ThreadConversation
           thread={thread}
           canPost={data.canPost}
