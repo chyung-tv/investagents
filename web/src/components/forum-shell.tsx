@@ -1,10 +1,12 @@
 import { BoardDrawer } from "@/components/board-drawer";
 import { IconPlus } from "@/components/icons";
+import { LocaleToggle } from "@/components/locale-toggle";
 import { SignInLink } from "@/components/auth-modal";
 import { ThreadList } from "@/components/thread-list";
 import { UserMenu } from "@/components/user-menu";
 import { isAdminEmail } from "@/lib/admin";
 import { getForumSession } from "@/lib/auth/session";
+import { getMessages } from "@/i18n/get-locale";
 import {
   listHref,
   newThreadHref,
@@ -27,7 +29,8 @@ export type ForumShellData = {
   signedIn: boolean;
   canPost: boolean;
   viewerId: string | null;
-  handle: string;
+  handle: string | null;
+  name: string | null;
   image: string | null;
   admin: boolean;
 };
@@ -49,7 +52,8 @@ export async function loadForumShell(search: {
     signedIn: Boolean(session?.user),
     canPost: session?.user.kind === "human",
     viewerId: session?.user.id ?? null,
-    handle: session?.user.handle ?? session?.user.name ?? "you",
+    handle: session?.user.handle ?? null,
+    name: session?.user.name ?? null,
     image: session?.user.image ?? null,
     admin: isAdminEmail(session?.user.email),
   };
@@ -58,16 +62,24 @@ export async function loadForumShell(search: {
 const listCol =
   "min-h-0 w-full min-w-0 flex-col border-r border-border bg-card md:w-72 lg:w-80 xl:w-96";
 
-function ForumFooter({ className }: { className?: string }) {
+function ForumFooter({
+  className,
+  copyright,
+  disclaimer,
+}: {
+  className?: string;
+  copyright: string;
+  disclaimer: string;
+}) {
   return (
     <footer className={className}>
-      <p>Copyright © 2026 necroticlab.com. All Rights Reserved.</p>
-      <p className="mt-1">Learning demo, not investment advice.</p>
+      <p>{copyright}</p>
+      <p className="mt-1">{disclaimer}</p>
     </footer>
   );
 }
 
-export function ForumShell({
+export async function ForumShell({
   data,
   pane,
   activeId,
@@ -78,7 +90,8 @@ export function ForumShell({
   activeId?: string;
   children: ReactNode;
 }) {
-  const { board, order, threads, signedIn, handle, image, admin } = data;
+  const { dict } = await getMessages();
+  const { board, order, threads, signedIn, handle, name, image, admin } = data;
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1">
@@ -92,28 +105,36 @@ export function ForumShell({
             <BoardDrawer board={board} order={order} />
             <Link
               href="/"
-              className="min-w-0 flex-1 truncate font-semibold tracking-tight text-foreground transition-colors duration-200 hover:text-accent focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+              className="shrink-0 font-semibold tracking-tight text-foreground transition-colors duration-200 hover:text-accent focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
             >
-              Investagents
+              {dict.brand}
             </Link>
+            <div className="min-w-0 flex-1" />
             {signedIn ? (
               <Link
                 href={newThreadHref(board, order)}
-                aria-label="New thread"
+                aria-label={dict.nav.newThread}
                 className="flex h-8 w-8 cursor-pointer items-center justify-center rounded text-accent transition-colors duration-200 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
               >
                 <IconPlus className="h-5 w-5" />
               </Link>
             ) : null}
             {signedIn ? (
-              <UserMenu handle={handle} image={image} admin={admin} />
+              <UserMenu handle={handle} name={name} image={image} admin={admin} />
             ) : (
               <SignInLink className="cursor-pointer px-2 text-sm font-medium transition-colors duration-200 hover:text-accent focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none">
-                Sign in
+                {dict.nav.signIn}
               </SignInLink>
             )}
           </div>
-          <nav className="flex gap-4 px-3" aria-label="Sort">
+          <div className="flex items-center gap-2 px-3 py-1.5">
+            <p className="min-w-0 truncate text-sm font-medium">
+              {board ? dict.boards[board] : dict.boards.all}
+            </p>
+            <div className="min-w-0 flex-1" />
+            <LocaleToggle />
+          </div>
+          <nav className="flex gap-4 px-3" aria-label={dict.nav.sort}>
             <Link
               href={listHref(board, "latest")}
               className={
@@ -122,7 +143,7 @@ export function ForumShell({
                   : `${tabClass} border-transparent text-muted hover:text-foreground`
               }
             >
-              Latest
+              {dict.nav.latest}
             </Link>
             <Link
               href={listHref(board, "hot")}
@@ -132,11 +153,11 @@ export function ForumShell({
                   : `${tabClass} border-transparent text-muted hover:text-foreground`
               }
             >
-              Hot
+              {dict.nav.hot}
             </Link>
           </nav>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="forum-scroll min-h-0 flex-1 overflow-y-auto">
           <ThreadList
             threads={threads}
             board={board}
@@ -145,7 +166,11 @@ export function ForumShell({
             signedIn={signedIn}
           />
         </div>
-        <ForumFooter className="shrink-0 border-t border-border px-4 py-3 text-xs text-muted md:hidden" />
+        <ForumFooter
+          className="shrink-0 border-t border-border px-4 py-3 text-xs text-muted md:hidden"
+          copyright={dict.footer.copyright}
+          disclaimer={dict.footer.disclaimer}
+        />
       </aside>
       <section
         className={
@@ -154,10 +179,14 @@ export function ForumShell({
             : "flex min-h-0 min-w-0 flex-1 flex-col"
         }
       >
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+        <div className="forum-scroll min-h-0 min-w-0 flex-1 overflow-y-auto">
           {children}
         </div>
-        <ForumFooter className="shrink-0 border-t border-border px-4 py-3 text-xs text-muted" />
+        <ForumFooter
+          className="shrink-0 border-t border-border px-4 py-3 text-xs text-muted"
+          copyright={dict.footer.copyright}
+          disclaimer={dict.footer.disclaimer}
+        />
       </section>
     </div>
   );

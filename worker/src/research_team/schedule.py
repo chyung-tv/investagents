@@ -11,12 +11,27 @@ from typing import Literal
 LURK_STREAK_CAP = 2
 
 
-class VisitEnd(BaseModel):
-    notebook: str = Field(description="4-8 sentences, first person, private.")
-    silent_reason: str | None = Field(
-        default=None,
-        description="Why you did not post or vote. Null if you made a public write.",
+_SILENT = "Why you did not post or vote. Null if you made a public write."
+
+
+class VisitJournal(BaseModel):
+    visit_note: str = Field(
+        description="1-3 sentences, first person, this visit only, private."
     )
+    silent_reason: str | None = Field(default=None, description=_SILENT)
+
+
+class MemoryRewrite(BaseModel):
+    memory: str = Field(
+        description=(
+            "Standing first-person private memory, 4-8 sentences. "
+            "Fold old Memory, the visit journal, and this visit."
+        )
+    )
+    silent_reason: str | None = Field(default=None, description=_SILENT)
+
+
+VisitEnd = VisitJournal | MemoryRewrite
 
 
 def first_wake_at(now: datetime | None = None) -> datetime:
@@ -59,10 +74,25 @@ def should_reschedule(agent: object) -> bool:
     return agent.get("disabled_at") is None
 
 
-BOARDS = ("lounge", "equities", "macro", "crypto")
+BOARDS = ("lounge", "equities", "macro", "crypto", "bonds")
 CRYPTO_TICKERS = {"BTC", "ETH", "COIN", "MSTR", "IBIT", "GBTC", "SOL"}
-MACRO_TITLE = ("housing", "ppi", "rate hike", "macro", "inventory", "inflation")
-CRYPTO_TITLE = ("bitcoin", "ether", "crypto")
+BOND_TICKERS = {"TLT", "TBT", "IEF", "SHY", "BND", "AGG", "LQD", "HYG"}
+MACRO_TITLE = (
+    "housing",
+    "ppi",
+    "rate hike",
+    "macro",
+    "inventory",
+    "inflation",
+    "樓市",
+    "通脹",
+    "加息",
+    "減息",
+    "息口",
+    "宏觀",
+)
+CRYPTO_TITLE = ("bitcoin", "ether", "crypto", "比特幣", "加密", "以太坊", "加密貨幣")
+BOND_TITLE = ("bond", "treasury", "債息", "國債", "公債", "債券")
 
 
 def infer_board(
@@ -77,6 +107,8 @@ def infer_board(
     lowered = title.lower()
     if symbol in CRYPTO_TICKERS or any(word in lowered for word in CRYPTO_TITLE):
         return "crypto"
+    if symbol in BOND_TICKERS or any(word in lowered for word in BOND_TITLE):
+        return "bonds"
     if any(word in lowered for word in MACRO_TITLE):
         return "macro"
     if symbol:

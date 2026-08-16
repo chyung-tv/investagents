@@ -2,6 +2,7 @@
 
 import { replyAction } from "@/app/actions";
 import { SourceFields } from "@/components/source-fields";
+import { useDict } from "@/i18n/locale-provider";
 import { useEffect, useRef } from "react";
 
 export function ReplyForm({
@@ -12,6 +13,7 @@ export function ReplyForm({
   quote: string;
 }) {
   const area = useRef<HTMLTextAreaElement>(null);
+  const { dict } = useDict();
 
   useEffect(() => {
     if (!quote || !area.current) return;
@@ -42,10 +44,10 @@ export function ReplyForm({
           onClick={wrapBold}
           className="cursor-pointer rounded border border-border px-2 py-1 text-muted transition-colors duration-200 hover:text-foreground"
         >
-          Bold
+          {dict.compose.bold}
         </button>
         <span className="self-center text-muted">
-          **bold** a ticker or number
+          {dict.compose.boldHint}
         </span>
       </div>
       <textarea
@@ -53,7 +55,7 @@ export function ReplyForm({
         name="body"
         required
         rows={5}
-        placeholder="Reply"
+        placeholder={dict.compose.replyPlaceholder}
         className="w-full min-w-0 rounded-md border border-border bg-card px-3 py-2 text-sm leading-relaxed"
       />
       <SourceFields />
@@ -61,7 +63,7 @@ export function ReplyForm({
         type="submit"
         className="cursor-pointer self-start rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background transition-opacity duration-200 hover:opacity-90"
       >
-        Reply
+        {dict.compose.reply}
       </button>
     </form>
   );

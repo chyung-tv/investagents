@@ -7,6 +7,7 @@ import {
 } from "@/app/login/actions";
 import { IconClose } from "@/components/icons";
 import { isAuthMode, safeNextPath, stripAuthParam } from "@/lib/auth-href";
+import { useDict } from "@/i18n/locale-provider";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useActionState, useEffect, useMemo, useRef } from "react";
@@ -25,10 +26,11 @@ export function SignInLink({
   className?: string;
   children?: React.ReactNode;
 }) {
+  const { dict } = useDict();
   return (
     <Suspense
       fallback={
-        <span className={className}>{children ?? "Sign in"}</span>
+        <span className={className}>{children ?? dict.nav.signIn}</span>
       }
     >
       <SignInLinkInner className={className}>{children}</SignInLinkInner>
@@ -43,6 +45,7 @@ function SignInLinkInner({
   className?: string;
   children?: React.ReactNode;
 }) {
+  const { dict } = useDict();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const href = useMemo(() => {
@@ -53,7 +56,7 @@ function SignInLinkInner({
 
   return (
     <Link href={href} scroll={false} className={className}>
-      {children ?? "Sign in"}
+        {children ?? dict.nav.signIn}
     </Link>
   );
 }
@@ -62,6 +65,7 @@ export function AuthModal() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
+  const { dict } = useDict();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const mode = searchParams.get("auth");
   const open = isAuthMode(mode);
@@ -113,17 +117,17 @@ export function AuthModal() {
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h2 id="auth-dialog-title" className="text-lg font-semibold tracking-tight">
-            {mode === "signup" ? "Create account" : "Sign in"}
+            {mode === "signup" ? dict.auth.createAccount : dict.auth.signIn}
           </h2>
           <p className="mt-1 text-sm text-muted">
             {mode === "signup"
-              ? "You can start threads and reply. Agents do the same."
-              : "Email and password, or Google."}
+              ? dict.auth.signUpHint
+              : dict.auth.signInHint}
           </p>
         </div>
         <button
           type="button"
-          aria-label="Close"
+          aria-label={dict.auth.close}
           onClick={close}
           className="flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted transition-colors duration-200 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
         >
@@ -151,17 +155,18 @@ function SignInFields({
     signInWithGoogle,
     null,
   );
+  const { dict } = useDict();
 
   return (
     <div className="flex flex-col gap-3">
       <form action={formAction} className="flex flex-col gap-3">
         <input type="hidden" name="next" value={next} />
         <label className="flex flex-col gap-1 text-sm">
-          Email
+          {dict.auth.email}
           <input name="email" type="email" required className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          Password
+          {dict.auth.password}
           <input
             name="password"
             type="password"
@@ -175,7 +180,7 @@ function SignInFields({
           </p>
         ) : null}
         <button type="submit" disabled={pending} className={primaryBtn}>
-          {pending ? "Signing in…" : "Sign in"}
+          {pending ? dict.auth.signingIn : dict.auth.signIn}
         </button>
       </form>
       <form action={googleAction}>
@@ -185,7 +190,7 @@ function SignInFields({
           disabled={googlePending}
           className={secondaryBtn}
         >
-          {googlePending ? "Redirecting…" : "Continue with Google"}
+          {googlePending ? dict.auth.redirecting : dict.auth.google}
         </button>
       </form>
       {googleState?.error ? (
@@ -194,13 +199,13 @@ function SignInFields({
         </p>
       ) : null}
       <p className="text-sm text-muted">
-        No account?{" "}
+        {dict.auth.noAccount}{" "}
         <Link
           href={signupHref}
           scroll={false}
           className="cursor-pointer underline"
         >
-          Sign up
+          {dict.auth.signUp}
         </Link>
       </p>
     </div>
@@ -215,21 +220,22 @@ function SignUpFields({
   signinHref: string;
 }) {
   const [state, formAction, pending] = useActionState(signUpWithEmail, null);
+  const { dict } = useDict();
 
   return (
     <div className="flex flex-col gap-3">
       <form action={formAction} className="flex flex-col gap-3">
         <input type="hidden" name="next" value={next} />
         <label className="flex flex-col gap-1 text-sm">
-          Name
+          {dict.auth.name}
           <input name="name" type="text" required className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          Email
+          {dict.auth.email}
           <input name="email" type="email" required className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          Password
+          {dict.auth.password}
           <input
             name="password"
             type="password"
@@ -244,17 +250,17 @@ function SignUpFields({
           </p>
         ) : null}
         <button type="submit" disabled={pending} className={primaryBtn}>
-          {pending ? "Creating…" : "Create account"}
+          {pending ? dict.auth.creating : dict.auth.createAccount}
         </button>
       </form>
       <p className="text-sm text-muted">
-        Already here?{" "}
+        {dict.auth.alreadyHere}{" "}
         <Link
           href={signinHref}
           scroll={false}
           className="cursor-pointer underline"
         >
-          Sign in
+          {dict.auth.signIn}
         </Link>
       </p>
     </div>

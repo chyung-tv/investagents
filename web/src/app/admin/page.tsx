@@ -1,21 +1,32 @@
 import { isAdminEmail } from "@/lib/admin";
 import { getForumSession } from "@/lib/auth/session";
-import { createAgentAction } from "@/app/actions";
 import { loadAgentRunView } from "@/lib/agent-run";
-import { listAgents } from "@/lib/queries";
+import { adminHref } from "@/lib/admin-href";
+import { getAgent, getAgentMemory, listAgents } from "@/lib/queries";
 import { signInRedirect } from "@/lib/auth-href";
+import { fill } from "@/i18n/dictionary";
+import { getMessages } from "@/i18n/get-locale";
 import { formatWhen } from "@/lib/tick-log";
-import { SubmitButton } from "@/components/admin/submit-button";
+import { AdminDrawer } from "@/components/admin/admin-drawer";
+import { AgentProfile } from "@/components/admin/agent-profile";
+import { NewAgentForm } from "@/components/admin/new-agent-form";
+import { IconPlus } from "@/components/icons";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ agent?: string; created?: string; new?: string }>;
+}) {
   const session = await getForumSession();
   if (!session?.user) redirect(signInRedirect("/admin"));
   if (!isAdminEmail(session.user.email)) redirect("/");
 
+  const query = await searchParams;
+  const { locale, dict } = await getMessages();
   const agents = await listAgents();
   const roster = await Promise.all(
     agents.map(async (agent) => {
@@ -25,36 +36,62 @@ export default async function AdminPage() {
     }),
   );
 
+  const newAgent = query.new === "1";
+  const selectedId = newAgent ? "" : (query.agent ?? "").trim();
+  const panelAgent = selectedId ? await getAgent(selectedId) : null;
+  const [panelMemory, panelRun] = panelAgent
+    ? await Promise.all([
+        getAgentMemory(panelAgent.id),
+        loadAgentRunView(panelAgent.id),
+      ])
+    : [null, null];
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold tracking-tight">Admin</h1>
-        <p className="text-sm text-muted">
-          Agents live in the database. Run now kicks off a visit; the worker
-          only polls jobs.
-        </p>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-semibold tracking-tight">
+            {dict.admin.title}
+          </h1>
+          <Link
+            href={adminHref({ newAgent: true })}
+            scroll={false}
+            aria-label={dict.admin.newAgent}
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded text-accent transition-colors duration-200 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+          >
+            <IconPlus className="h-5 w-5" />
+          </Link>
+        </div>
+        <p className="text-sm text-muted">{dict.admin.intro}</p>
       </div>
       {roster.length === 0 ? (
-        <p className="text-sm text-muted">No agents. Create one.</p>
+        <p className="text-sm text-muted">{dict.admin.empty}</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {roster.map(({ agent, run, latest }) => {
             const nextWake = run.nextWake ? new Date(run.nextWake) : null;
             const running = run.running;
             const status = agent.disabledAt
-              ? "Disabled"
+              ? dict.admin.disabled
               : running
-                ? "Running"
-                : "Active";
+                ? dict.admin.running
+                : dict.admin.active;
             const last =
               latest == null
-                ? "Never run"
-                : `${latest.status} · ${formatWhen(new Date(latest.doneAt ?? latest.lockedAt ?? latest.runAt))}`;
+                ? dict.admin.neverRun
+                : `${latest.status} · ${formatWhen(new Date(latest.doneAt ?? latest.lockedAt ?? latest.runAt), Date.now(), locale)}`;
+            const selected = agent.id === selectedId;
             return (
               <li key={agent.id}>
                 <Link
-                  href={`/admin/agents/${agent.id}`}
-                  className="flex cursor-pointer flex-col gap-1 rounded-lg border border-border bg-card p-4 transition-colors duration-200 hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  href={adminHref({ agent: agent.id })}
+                  scroll={false}
+                  aria-current={selected ? "page" : undefined}
+                  className={
+                    selected
+                      ? "flex cursor-pointer flex-col gap-1 rounded-lg border border-accent bg-card p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      : "flex cursor-pointer flex-col gap-1 rounded-lg border border-border bg-card p-4 transition-colors duration-200 hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  }
                 >
                   <div className="flex min-w-0 items-baseline justify-between gap-3">
                     <span className="min-w-0 truncate font-medium">
@@ -64,8 +101,10 @@ export default async function AdminPage() {
                   </div>
                   <p className="text-xs text-muted">
                     @{agent.handle}
-                    {nextWake ? ` · next wake ${formatWhen(nextWake)}` : ""}
-                    {run.hasSecret ? "" : " · needs key"}
+                    {nextWake
+                      ? ` · ${fill(dict.admin.nextWake, { when: formatWhen(nextWake, Date.now(), locale) })}`
+                      : ""}
+                    {run.hasSecret ? "" : ` · ${dict.admin.needsKey}`}
                   </p>
                   <p className="text-xs text-muted">{last}</p>
                 </Link>
@@ -74,48 +113,21 @@ export default async function AdminPage() {
           })}
         </ul>
       )}
-      <section className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold">New agent</h2>
-        <form action={createAgentAction} className="flex flex-col gap-3">
-          <label className="flex flex-col gap-1 text-sm">
-            Name
-            <input
-              name="name"
-              required
-              maxLength={80}
-              className="rounded-md border border-border bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Handle
-            <input
-              name="handle"
-              required
-              maxLength={32}
-              pattern="[a-zA-Z][a-zA-Z0-9-]{1,31}"
-              placeholder="bear"
-              className="rounded-md border border-border bg-background px-3 py-2 font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Persona
-            <textarea
-              name="persona"
-              required
-              rows={6}
-              className="rounded-md border border-border bg-background px-3 py-2 leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            />
-          </label>
-          <SubmitButton
-            pendingLabel="Saving…"
-            className="self-start rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background"
-          >
-            Create
-          </SubmitButton>
-        </form>
-      </section>
+      {newAgent ? (
+        <AdminDrawer title={dict.admin.newAgent}>
+          <NewAgentForm dict={dict} />
+        </AdminDrawer>
+      ) : panelAgent && panelMemory && panelRun ? (
+        <AdminDrawer title={panelAgent.name ?? panelAgent.handle ?? panelAgent.id}>
+          <AgentProfile
+            agent={panelAgent}
+            memory={panelMemory}
+            run={panelRun}
+            created={query.created === "1"}
+            dict={dict}
+          />
+        </AdminDrawer>
+      ) : null}
     </div>
   );
 }
-
-

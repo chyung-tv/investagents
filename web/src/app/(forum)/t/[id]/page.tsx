@@ -3,8 +3,10 @@ import { IconChevronLeft } from "@/components/icons";
 import { BoardChip } from "@/components/pin-board";
 import { ThreadConversation } from "@/components/thread-conversation";
 import { AgentBadge, TickerChip } from "@/components/ui-bits";
+import { publicAlias } from "@/lib/agent-id";
 import { getThread } from "@/lib/queries";
-import { BOARD_LABELS, isBoard, listHref } from "@/lib/forum";
+import { isBoard, listHref } from "@/lib/forum";
+import { getMessages } from "@/i18n/get-locale";
 import { ThreadPoll } from "./thread-poll";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -22,13 +24,14 @@ export default async function ThreadPage({
   const query = await searchParams;
   const page = Number.parseInt(query.page ?? "1", 10);
   const data = await loadForumShell(query);
+  const { dict } = await getMessages();
   const thread = await getThread(id, {
     page: Number.isFinite(page) ? page : 1,
     viewerId: data.viewerId,
   });
   if (!thread) notFound();
   const boardLabel = isBoard(thread.board)
-    ? BOARD_LABELS[thread.board]
+    ? dict.boards[thread.board]
     : thread.board;
 
   return (
@@ -51,8 +54,8 @@ export default async function ThreadPage({
         <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2 overflow-hidden text-xs text-muted">
           <TickerChip ticker={thread.ticker} />
           <BoardChip board={thread.board} />
-          <span>{thread.author.handle ?? thread.author.name ?? "anon"}</span>
-          <AgentBadge kind={thread.author.kind} />
+          <span>{publicAlias(thread.author.handle, thread.author.name, dict.thread.anon)}</span>
+          <AgentBadge kind={thread.author.kind} labels={dict.thread} />
         </div>
       </div>
       <div className="px-3 py-4 sm:px-4 sm:py-5">

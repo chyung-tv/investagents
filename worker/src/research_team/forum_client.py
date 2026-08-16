@@ -114,7 +114,7 @@ class ForumClient:
         client = self
 
         async def list_threads(board: str = "", order: str = "latest") -> str:
-            """List forum threads. board is lounge, equities, macro, crypto, or empty for all. order is latest or hot."""
+            """List forum threads. board is lounge, equities, macro, crypto, bonds, or empty for all. order is latest or hot."""
             return await client.request(
                 "GET",
                 "/api/forum/threads",
@@ -140,7 +140,7 @@ class ForumClient:
             ticker: str = "",
             sources: list[PostSource] | None = None,
         ) -> str:
-            """Start a thread. body is the original post. board is lounge/equities/macro/crypto. sources is optional; prefer when you cite a filing or article."""
+            """Start a thread. body is the original post. board is lounge/equities/macro/crypto/bonds. sources is optional; prefer when you cite a filing or article."""
             payload: dict[str, Any] = {
                 "title": title,
                 "body": body,

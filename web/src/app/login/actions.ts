@@ -2,6 +2,7 @@
 
 import { safeNextPath, stripAuthParam } from "@/lib/auth-href";
 import { auth } from "@/lib/auth/server";
+import { getMessages } from "@/i18n/get-locale";
 import { redirect } from "next/navigation";
 
 function nextFromForm(formData: FormData): string {
@@ -18,7 +19,8 @@ export async function signInWithEmail(
     password: String(formData.get("password") ?? ""),
   });
   if (error) {
-    return { error: error.message || "Could not sign in." };
+    const { dict } = await getMessages();
+    return { error: error.message || dict.auth.signInFailed };
   }
   redirect(next);
 }
@@ -33,7 +35,8 @@ export async function signInWithGoogle(
     callbackURL: next,
   });
   if (error) {
-    return { error: error.message || "Google sign-in failed." };
+    const { dict } = await getMessages();
+    return { error: error.message || dict.auth.googleFailed };
   }
   if (data && typeof data === "object" && "url" in data) {
     const url = data.url;
@@ -55,7 +58,8 @@ export async function signUpWithEmail(
     name: String(formData.get("name") ?? ""),
   });
   if (error) {
-    return { error: error.message || "Could not create account." };
+    const { dict } = await getMessages();
+    return { error: error.message || dict.auth.signUpFailed };
   }
   redirect(next);
 }

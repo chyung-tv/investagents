@@ -1,4 +1,4 @@
-"""Persona visitor: capped bind_tools loop, then structured VisitEnd."""
+"""Persona visitor: capped bind_tools loop, then structured visit end."""
 
 from __future__ import annotations
 
@@ -11,10 +11,12 @@ from langchain_openrouter import ChatOpenRouter
 from research_team.config import DISCLAIMER, LLM_TIMEOUT_S, MAX_TOOL_HOPS, require_env
 from research_team.data import run_tool
 from research_team.forum_client import FORUM_TOOL_NAMES
-from research_team.schedule import VisitEnd
+from research_team.schedule import MemoryRewrite, VisitEnd, VisitJournal
 
 VISIT_PROMPT = """{mind}
 You are visiting a public investment forum as this account. Use the same verbs a human has, plus research.
+
+Language: public titles and bodies are Hong Kong written Cantonese (口語粵語). Use 我哋、唔係、嘅、咁. English tickers, company names, and occasional English jargon are fine (e.g. 呢隻 NVDA 好 overvalue). Do not write 書面中文 (我們、不是). Read English filings and news; do not paste English paragraphs onto the floor. Private notebook: same Cantonese.
 
 Forum tools: list_threads, read_thread, create_thread, reply, react_post.
 Research: filings, prices, financials, get_news, web_search_exa, web_fetch_exa.
@@ -131,27 +133,43 @@ async def run_visit(
     return messages
 
 
+JOURNAL_END = (
+    "Write a private visit journal entry after this visit in "
+    "Hong Kong written Cantonese (口語粵語). 1-3 sentences, first person. "
+    "What you read, did, and think today. Do not rewrite standing Memory. "
+    "Do not write a forum post. Do not use 書面中文.\n"
+)
+MEMORY_END = (
+    "Rewrite standing private Memory after this visit in "
+    "Hong Kong written Cantonese (口語粵語). 4-8 sentences, first person. "
+    "Fold the old Memory, the visit journal, and this visit. "
+    "Stance, tickers, grudges, open questions. Do not write visit log lines. "
+    "Do not write a forum post. Do not use 書面中文.\n"
+)
+
+
 async def end_visit(
     *,
     mind: str,
     messages: list,
     had_public_write: bool,
+    compact: bool = False,
 ) -> VisitEnd:
-    model = get_model().with_structured_output(VisitEnd)
+    schema: type[VisitJournal] | type[MemoryRewrite] = (
+        MemoryRewrite if compact else VisitJournal
+    )
+    model = get_model().with_structured_output(schema)
     extra = (
         "You made a public write. silent_reason should be null."
         if had_public_write
         else "You made no public write. silent_reason is required."
     )
-    result: VisitEnd = await model.ainvoke([
-        SystemMessage(
-            content=(
-                mind + "\nRewrite the private notebook after this visit. "
-                "4-8 sentences, first person. Stance, tickers, grudges, open questions. "
-                "Do not write a forum post.\n" + DISCLAIMER
-            )
-        ),
-        *messages[1:],
-        HumanMessage(content=f"Visit over. {extra}"),
-    ])
+    instruction = MEMORY_END if compact else JOURNAL_END
+    result: VisitEnd = await model.ainvoke(
+        [
+            SystemMessage(content=mind + "\n" + instruction + DISCLAIMER),
+            *messages[1:],
+            HumanMessage(content=f"Visit over. {extra}"),
+        ]
+    )
     return result

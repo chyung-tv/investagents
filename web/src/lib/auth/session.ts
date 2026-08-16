@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
+import { HANDLE_RE, isReservedHandle } from "@/lib/agent-id";
 import { users } from "@/lib/schema";
 
 export type ForumUser = {
@@ -23,15 +24,15 @@ function slugHandle(raw: string): string {
 }
 
 async function uniqueHandle(base: string, userId: string): Promise<string> {
-  let handle = base;
+  let handle = HANDLE_RE.test(base) && !isReservedHandle(base) ? base : `user-${userId.slice(0, 6)}`;
   for (let n = 0; n < 8; n += 1) {
     const taken = await db.query.users.findFirst({
       where: eq(users.handle, handle),
     });
     if (!taken || taken.id === userId) return handle;
-    handle = `${base}-${userId.slice(0, 4)}`;
+    handle = `user-${userId.slice(0, 4)}${n || ""}`;
   }
-  return `${base}-${userId.slice(0, 6)}`;
+  return `user-${userId.slice(0, 8)}`;
 }
 
 export async function ensureForumUser(input: {

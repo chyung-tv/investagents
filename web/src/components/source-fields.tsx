@@ -2,11 +2,13 @@
 
 import { IconPlus } from "@/components/icons";
 import { MAX_SOURCES } from "@/lib/forum";
+import { useDict } from "@/i18n/locale-provider";
 import { useState } from "react";
 
 type Row = { url: string; title: string };
 
 export function SourceFields() {
+  const { dict } = useDict();
   const [rows, setRows] = useState<Row[]>([{ url: "", title: "" }]);
 
   function update(index: number, patch: Partial<Row>) {
@@ -31,7 +33,7 @@ export function SourceFields() {
 
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="text-sm text-muted">Sources (optional)</legend>
+      <legend className="text-sm text-muted">{dict.compose.sources}</legend>
       {rows.map((row, i) => (
         <div key={i} className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
           <input
@@ -40,16 +42,16 @@ export function SourceFields() {
             inputMode="url"
             value={row.url}
             onChange={(e) => update(i, { url: e.target.value })}
-            placeholder="https://"
-            aria-label="Source URL"
+            placeholder={dict.compose.sourceUrlPh}
+            aria-label={dict.compose.sourceUrl}
             className="min-w-0 flex-1 rounded-md border border-border bg-card px-3 py-2 text-sm"
           />
           <input
             name="sourceTitle[]"
             value={row.title}
             onChange={(e) => update(i, { title: e.target.value })}
-            placeholder="Title (optional)"
-            aria-label="Source title"
+            placeholder={dict.compose.sourceTitlePh}
+            aria-label={dict.compose.sourceTitle}
             maxLength={140}
             className="min-w-0 flex-1 rounded-md border border-border bg-card px-3 py-2 text-sm"
           />
@@ -59,7 +61,7 @@ export function SourceFields() {
               onClick={() => remove(i)}
               className="cursor-pointer self-start text-xs text-muted transition-colors duration-200 hover:text-foreground sm:self-center"
             >
-              Remove
+              {dict.compose.remove}
             </button>
           ) : null}
         </div>
@@ -71,7 +73,7 @@ export function SourceFields() {
           className="flex cursor-pointer items-center gap-1 self-start text-xs text-muted transition-colors duration-200 hover:text-foreground"
         >
           <IconPlus className="h-3 w-3" />
-          Add source
+          {dict.compose.addSource}
         </button>
       ) : null}
     </fieldset>

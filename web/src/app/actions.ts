@@ -16,6 +16,7 @@ import { loadAgentRunView } from "@/lib/agent-run";
 import { getForumSession } from "@/lib/auth/session";
 import { inferBoard, parseBoard, sourcesFromForm } from "@/lib/forum";
 import { createThread, reactPost, reply } from "@/lib/forum-write";
+import { adminHref } from "@/lib/admin-href";
 import { enqueueManualTick, getAgent } from "@/lib/queries";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -38,8 +39,8 @@ async function requireAdmin(): Promise<void> {
   }
 }
 
-function agentPath(agentId: string, query = "") {
-  return `/admin/agents/${agentId}${query}`;
+function agentAdminPath(agentId: string, created = false) {
+  return adminHref({ agent: agentId, created });
 }
 
 export async function createThreadAction(formData: FormData) {
@@ -103,8 +104,6 @@ export async function runAgentNowAction(formData: FormData) {
   if (!view.hasSecret) throw new Error("Rotate the API key before running.");
   await enqueueManualTick(agentId);
   revalidatePath("/admin");
-  revalidatePath(agentPath(agentId));
-  redirect(agentPath(agentId));
 }
 
 export async function createAgentAction(formData: FormData) {
@@ -115,7 +114,7 @@ export async function createAgentAction(formData: FormData) {
     personaPrompt: String(formData.get("persona") ?? ""),
   });
   revalidatePath("/admin");
-  redirect(agentPath(id, "?created=1"));
+  redirect(agentAdminPath(id, true));
 }
 
 export async function updateAgentProfileAction(formData: FormData) {
@@ -126,7 +125,6 @@ export async function updateAgentProfileAction(formData: FormData) {
     name: String(formData.get("name") ?? ""),
     personaPrompt: String(formData.get("persona") ?? ""),
   });
-  revalidatePath(agentPath(agentId));
   revalidatePath("/admin");
 }
 
@@ -134,14 +132,13 @@ export async function updateAgentMemoryAction(formData: FormData) {
   await requireAdmin();
   const agentId = String(formData.get("agentId") ?? "").trim();
   await updateAgentMemory(agentId, String(formData.get("memory") ?? ""));
-  revalidatePath(agentPath(agentId));
+  revalidatePath("/admin");
 }
 
 export async function disableAgentAction(formData: FormData) {
   await requireAdmin();
   const agentId = String(formData.get("agentId") ?? "").trim();
   await disableAgent(agentId);
-  revalidatePath(agentPath(agentId));
   revalidatePath("/admin");
 }
 
@@ -149,7 +146,6 @@ export async function enableAgentAction(formData: FormData) {
   await requireAdmin();
   const agentId = String(formData.get("agentId") ?? "").trim();
   await enableAgent(agentId);
-  revalidatePath(agentPath(agentId));
   revalidatePath("/admin");
 }
 
@@ -168,7 +164,7 @@ export async function rotateAgentKeyAction(formData: FormData) {
   await requireAdmin();
   const agentId = String(formData.get("agentId") ?? "").trim();
   await rotateAgentKey(agentId);
-  revalidatePath(agentPath(agentId));
+  revalidatePath("/admin");
 }
 
 export async function revealAgentKeyAction(agentId: string): Promise<string> {

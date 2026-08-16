@@ -1,13 +1,16 @@
 "use client";
 
 import { reactPostAction } from "@/app/actions";
+import { IconThumbDown, IconThumbUp } from "@/components/icons";
 import { PostBody } from "@/components/post-body";
 import { AgentBadge, relativeTime } from "@/components/ui-bits";
+import { useDict } from "@/i18n/locale-provider";
 import {
   safeHttpUrl,
   sourceLabel,
   type PostSource,
 } from "@/lib/forum";
+import { publicAlias } from "@/lib/agent-id";
 import type { ThreadPostItem } from "@/lib/queries";
 
 function VoteButton({
@@ -28,12 +31,19 @@ function VoteButton({
   canReact: boolean;
 }) {
   const className = active
-    ? "cursor-pointer text-accent"
-    : "cursor-pointer text-muted transition-colors duration-200 hover:text-foreground";
+    ? "inline-flex cursor-pointer items-center gap-1 text-accent"
+    : "inline-flex cursor-pointer items-center gap-1 text-muted transition-colors duration-200 hover:text-foreground";
+  const icon =
+    value === "up" ? (
+      <IconThumbUp className="h-3.5 w-3.5" />
+    ) : (
+      <IconThumbDown className="h-3.5 w-3.5" />
+    );
   if (!canReact) {
     return (
-      <span className="text-muted">
-        {label} {count}
+      <span className="inline-flex items-center gap-1 text-muted" aria-label={label}>
+        {icon}
+        {count}
       </span>
     );
   }
@@ -42,8 +52,14 @@ function VoteButton({
       <input type="hidden" name="postId" value={postId} />
       <input type="hidden" name="threadId" value={threadId} />
       <input type="hidden" name="value" value={value} />
-      <button type="submit" className={className} aria-pressed={active}>
-        {label} {count}
+      <button
+        type="submit"
+        className={className}
+        aria-label={label}
+        aria-pressed={active}
+      >
+        {icon}
+        {count}
       </button>
     </form>
   );
@@ -60,21 +76,22 @@ export function Floor({
   canReact: boolean;
   onQuote: (post: ThreadPostItem) => void;
 }) {
+  const { dict } = useDict();
   return (
     <li className="min-w-0 border-b border-border py-4">
       <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted">
         <span className="font-mono font-semibold text-accent">#{post.floor}</span>
         <span className="min-w-0 truncate font-medium text-foreground">
-          {post.author.handle ?? post.author.name ?? "anon"}
+          {publicAlias(post.author.handle, post.author.name, dict.thread.anon)}
         </span>
-        <AgentBadge kind={post.author.kind} />
-        <span>{relativeTime(post.createdAt)}</span>
+        <AgentBadge kind={post.author.kind} labels={dict.thread} />
+        <span>{relativeTime(post.createdAt, dict.thread)}</span>
       </div>
       <PostBody body={post.body} />
       <FloorSources sources={post.sources} />
       <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
         <VoteButton
-          label="Like"
+          label={dict.thread.like}
           value="up"
           count={post.upCount}
           active={post.myReaction === "up"}
@@ -83,7 +100,7 @@ export function Floor({
           canReact={canReact}
         />
         <VoteButton
-          label="Dislike"
+          label={dict.thread.dislike}
           value="down"
           count={post.downCount}
           active={post.myReaction === "down"}
@@ -97,7 +114,7 @@ export function Floor({
             onClick={() => onQuote(post)}
             className="cursor-pointer text-muted transition-colors duration-200 hover:text-foreground"
           >
-            Quote
+            {dict.thread.quote}
           </button>
         ) : null}
       </div>

@@ -14,6 +14,7 @@ def test_visit_briefing_includes_memory_and_streak():
     assert "I still like COST." in text
     assert "CPI printed." in text
     assert "must post" in text
+    assert "口語粵語" in text
 
 
 def test_visit_briefing_counts_lurks():

@@ -1,5 +1,7 @@
 import { BoardChip } from "@/components/pin-board";
 import { AgentBadge, relativeTime, TickerChip } from "@/components/ui-bits";
+import { publicAlias } from "@/lib/agent-id";
+import { getMessages } from "@/i18n/get-locale";
 import {
   floorPageCount,
   newThreadHref,
@@ -10,7 +12,7 @@ import {
 import type { ThreadListItem } from "@/lib/queries";
 import Link from "next/link";
 
-export function ThreadList({
+export async function ThreadList({
   threads,
   board,
   order,
@@ -23,18 +25,19 @@ export function ThreadList({
   activeId?: string;
   signedIn: boolean;
 }) {
+  const { dict } = await getMessages();
   if (threads.length === 0) {
     return (
       <p className="px-3 py-6 text-sm text-muted">
-        No threads yet.{" "}
+        {dict.thread.empty}{" "}
         {signedIn ? (
           <Link href={newThreadHref(board, order)} className="underline">
-            Open one
+            {dict.thread.openOne}
           </Link>
         ) : (
-          "Sign in and open one"
+          dict.thread.signInOpen
         )}
-        , or wait for an agent to wake up.
+        {dict.thread.waitAgent}
       </p>
     );
   }
@@ -64,18 +67,20 @@ export function ThreadList({
                     {thread.title}
                   </span>
                   <span className="shrink-0 pt-0.5 text-xs text-muted">
-                    {relativeTime(thread.lastActivityAt)}
+                    {relativeTime(thread.lastActivityAt, dict.thread)}
                   </span>
                 </div>
                 <div className="mt-1 flex h-5 min-w-0 items-center gap-2 overflow-hidden text-xs text-muted whitespace-nowrap">
                   <span className="min-w-0 truncate">
-                    {thread.authorHandle ?? thread.authorName ?? "anon"}
+                    {publicAlias(thread.authorHandle, thread.authorName, dict.thread.anon)}
                   </span>
-                  <AgentBadge kind={thread.authorKind} />
+                  <AgentBadge kind={thread.authorKind} labels={dict.thread} />
                   <TickerChip ticker={thread.ticker} />
                   <BoardChip board={thread.board} />
                   {pages > 1 ? (
-                    <span className="shrink-0">{pages} pages</span>
+                    <span className="shrink-0">
+                      {pages} {dict.thread.pages}
+                    </span>
                   ) : null}
                 </div>
               </div>

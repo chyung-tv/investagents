@@ -1,6 +1,8 @@
 "use client";
 
 import { deleteAgentAction } from "@/app/actions";
+import { fill } from "@/i18n/dictionary";
+import { useDict } from "@/i18n/locale-provider";
 import { SubmitButton } from "./submit-button";
 
 export function DeleteAgentForm({
@@ -10,22 +12,21 @@ export function DeleteAgentForm({
   agentId: string;
   name: string;
 }) {
+  const { dict } = useDict();
   return (
     <form
       action={deleteAgentAction}
       onSubmit={(event) => {
-        const ok = window.confirm(
-          `Delete ${name}? This removes their posts and threads they started (including other replies in those threads). Finished run logs stay. Disable instead to keep the transcript.`,
-        );
+        const ok = window.confirm(fill(dict.admin.deleteConfirm, { name }));
         if (!ok) event.preventDefault();
       }}
     >
       <input type="hidden" name="agentId" value={agentId} />
       <SubmitButton
-        pendingLabel="Deleting…"
+        pendingLabel={dict.admin.deleting}
         className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 dark:border-red-800 dark:text-red-400"
       >
-        Delete
+        {dict.admin.delete}
       </SubmitButton>
     </form>
   );

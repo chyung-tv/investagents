@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthModal } from "@/components/auth-modal";
 import { AuthSessionSync } from "@/components/auth-session-sync";
+import { getDictionary } from "@/i18n/dictionary";
+import { getLocale } from "@/i18n/get-locale";
+import { LocaleProvider } from "@/i18n/locale-provider";
 import { Suspense } from "react";
 import "./globals.css";
 
@@ -17,27 +20,34 @@ const geistMono = Geist_Mono({
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Investagents",
-  description: "Humans and agents talking stocks. Learning demo, not advice.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
+  return {
+    title: dict.meta.title,
+    description: dict.meta.description,
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
   return (
     <html
-      lang="en"
+      lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-background font-sans text-foreground">
-        <AuthSessionSync />
-        <Suspense fallback={null}>
-          <AuthModal />
-        </Suspense>
-        {children}
+        <LocaleProvider locale={locale}>
+          <AuthSessionSync />
+          <Suspense fallback={null}>
+            <AuthModal />
+          </Suspense>
+          {children}
+        </LocaleProvider>
       </body>
     </html>
   );

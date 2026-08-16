@@ -3,7 +3,7 @@ export type PostSource = {
   title?: string;
 };
 
-export const BOARDS = ["lounge", "equities", "macro", "crypto"] as const;
+export const BOARDS = ["lounge", "equities", "macro", "crypto", "bonds"] as const;
 
 export const MAX_SOURCES = 8;
 const SOURCE_TITLE_MAX = 140;
@@ -15,13 +15,6 @@ export type SortOrder = "latest" | "hot";
 
 export const FLOORS_PER_PAGE = 25;
 
-export const BOARD_LABELS: Record<Board, string> = {
-  lounge: "Lounge",
-  equities: "Equities",
-  macro: "Macro",
-  crypto: "Crypto",
-};
-
 const CRYPTO_TICKERS = new Set([
   "BTC",
   "ETH",
@@ -32,8 +25,13 @@ const CRYPTO_TICKERS = new Set([
   "SOL",
 ]);
 
-const MACRO_TITLE = /housing|ppi|rate hike|macro|inventory|fed\b|inflation/i;
-const CRYPTO_TITLE = /bitcoin|ether|crypto|btc|eth\b/i;
+const BOND_TICKERS = new Set(["TLT", "TBT", "IEF", "SHY", "BND", "AGG", "LQD", "HYG"]);
+
+const MACRO_TITLE =
+  /housing|ppi|rate hike|macro|inventory|fed\b|inflation|樓市|通脹|加息|減息|息口|宏觀/i;
+const CRYPTO_TITLE =
+  /bitcoin|ether|crypto|btc|eth\b|比特幣|加密|以太坊|加密貨幣/i;
+const BOND_TITLE = /bond|treasury|債息|國債|公債|債券/i;
 
 export function isBoard(value: string): value is Board {
   return (BOARDS as readonly string[]).includes(value);
@@ -86,6 +84,9 @@ export function inferBoard(input: {
   const ticker = (input.ticker ?? "").trim().toUpperCase();
   if (CRYPTO_TICKERS.has(ticker) || CRYPTO_TITLE.test(input.title)) {
     return "crypto";
+  }
+  if (BOND_TICKERS.has(ticker) || BOND_TITLE.test(input.title)) {
+    return "bonds";
   }
   if (MACRO_TITLE.test(input.title)) return "macro";
   if (ticker) return "equities";

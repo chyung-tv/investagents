@@ -1,3 +1,5 @@
+import { getDictionary } from "@/i18n/dictionary";
+import { getLocale } from "@/i18n/get-locale";
 import { formatTickEvent, pipelineStage, tickStatus } from "./tick-log";
 import type { FormattedTickEvent, PipelineStep } from "./tick-log";
 import { listAgentTicks, nextScheduledWake, titlesForTickLinks } from "./queries";
@@ -16,7 +18,7 @@ export type RunEventDto = {
 
 export type RunTickDto = {
   id: string;
-  source: "scheduled" | "manual";
+  source: string;
   runAt: string;
   lockedAt: string | null;
   doneAt: string | null;
@@ -42,6 +44,8 @@ function asStringList(value: unknown): string[] {
 }
 
 export async function loadAgentRunView(agentId: string): Promise<AgentRunView> {
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
   const [ticks, next, key] = await Promise.all([
     listAgentTicks(agentId, 10),
     nextScheduledWake(agentId),
@@ -63,7 +67,7 @@ export async function loadAgentRunView(agentId: string): Promise<AgentRunView> {
     running: ticks.some((tick) => !tick.doneAt && tick.lockedAt),
     ticks: ticks.map((tick) => {
       const events = tick.events.map((event) => {
-        const formatted = formatTickEvent(event, lookup);
+        const formatted = formatTickEvent(event, lookup, locale);
         return {
           id: formatted.id,
           at: formatted.at.toISOString(),
@@ -77,14 +81,17 @@ export async function loadAgentRunView(agentId: string): Promise<AgentRunView> {
       });
       return {
         id: tick.id,
-        source: tick.payload.source,
+        source:
+          tick.payload.source === "scheduled"
+            ? dict.admin.sourceScheduled
+            : dict.admin.sourceManual,
         runAt: tick.runAt.toISOString(),
         lockedAt: tick.lockedAt?.toISOString() ?? null,
         doneAt: tick.doneAt?.toISOString() ?? null,
         error: tick.error,
         summary: tick.result?.summary ?? null,
         contributions: tick.result?.contributions ?? null,
-        status: tickStatus(tick),
+        status: tickStatus(tick, locale),
         stage: pipelineStage(tick),
         events,
       };

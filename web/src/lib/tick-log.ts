@@ -1,3 +1,6 @@
+import { fill, getDictionary } from "@/i18n/dictionary";
+import type { Locale } from "@/i18n/locales";
+
 export type TickEventRow = {
   id: string;
   at: Date;
@@ -73,7 +76,15 @@ function asStringList(value: unknown): string[] {
 }
 
 function countWord(n: number, one: string, many: string): string {
-  return n === 1 ? `1 ${one}` : `${n} ${many}`;
+  return n === 1 ? one : fill(many, { n });
+}
+
+function compactSpan(mins: number, locale: Locale): string {
+  const dict = getDictionary(locale).thread;
+  if (mins < 60) return fill(dict.minutes, { n: mins });
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return fill(dict.hours, { n: hours });
+  return fill(dict.days, { n: Math.round(hours / 24) });
 }
 
 function extraJson(detail: Record<string, unknown>, used: string[]): string | null {
@@ -90,30 +101,29 @@ function extraJson(detail: Record<string, unknown>, used: string[]): string | nu
   }
 }
 
-export function formatWhen(date: Date, now = Date.now()): string {
+export function formatWhen(date: Date, now = Date.now(), locale: Locale = "en"): string {
+  const dict = getDictionary(locale).tick;
   const delta = date.getTime() - now;
   const abs = Math.abs(delta);
-  if (abs < 45_000) return delta >= 0 ? "soon" : "just now";
+  if (abs < 45_000) return delta >= 0 ? dict.soon : dict.justNow;
   const mins = Math.round(abs / 60_000);
-  let label: string;
-  if (mins < 60) {
-    label = `${mins}m`;
-  } else {
-    const hours = Math.round(mins / 60);
-    label = hours < 24 ? `${hours}h` : `${Math.round(hours / 24)}d`;
-  }
-  return delta >= 0 ? `in ${label}` : `${label} ago`;
+  const label = compactSpan(mins, locale);
+  return delta >= 0 ? fill(dict.inLabel, { label }) : fill(dict.agoLabel, { label });
 }
 
-export function tickStatus(tick: Pick<AgentTickRow, "doneAt" | "lockedAt" | "error" | "result">): string {
+export function tickStatus(
+  tick: Pick<AgentTickRow, "doneAt" | "lockedAt" | "error" | "result">,
+  locale: Locale = "en",
+): string {
+  const dict = getDictionary(locale).tick;
   if (!tick.doneAt) {
-    if (!tick.lockedAt) return "queued";
+    if (!tick.lockedAt) return dict.queued;
     const ageMs = Date.now() - tick.lockedAt.getTime();
-    return ageMs > 3 * 60 * 1000 ? "stuck" : "running";
+    return ageMs > 3 * 60 * 1000 ? dict.stuck : dict.running;
   }
   if (tick.error) return tick.error;
   const n = tick.result?.contributions ?? 0;
-  return n === 1 ? "1 contribution" : `${n} contributions`;
+  return n === 1 ? dict.contributionOne : fill(dict.contributionMany, { n });
 }
 
 export function pipelineStage(tick: AgentTickRow): PipelineStep {
@@ -135,7 +145,9 @@ export function pipelineStage(tick: AgentTickRow): PipelineStep {
 export function formatTickEvent(
   event: TickEventRow,
   lookup: TitleLookup = { threads: new Map(), posts: new Map() },
+  locale: Locale = "en",
 ): FormattedTickEvent {
+  const dict = getDictionary(locale);
   const detail = event.detail ?? {};
   const links: TickLink[] = [];
   const lines: string[] = [];
@@ -144,16 +156,22 @@ export function formatTickEvent(
   let used: string[] = [];
 
   if (event.step === "claimed") {
-    const source = asString(detail.source) ?? "manual";
-    title = `Claimed · ${source}`;
+    const raw = asString(detail.source) ?? "manual";
+    const source =
+      raw === "scheduled"
+        ? dict.admin.sourceScheduled
+        : raw === "manual"
+          ? dict.admin.sourceManual
+          : raw;
+    title = fill(dict.tick.claimed, { source });
     used = ["source", "agentId"];
     tone = "ok";
   } else if (event.step === "news") {
     const chars = asNumber(detail.chars);
     title =
       chars == null
-        ? "Fetched market news"
-        : `Fetched market news (${chars} chars)`;
+        ? dict.tick.fetchedNews
+        : fill(dict.tick.fetchedNewsChars, { n: chars });
     const text = asString(detail.text);
     if (text) lines.push(text);
     used = ["chars", "text"];
@@ -162,7 +180,7 @@ export function formatTickEvent(
     const status = asString(detail.status);
     if (status === "started") {
       const streak = asNumber(detail.lurkStreak) ?? 0;
-      title = `Visit started · lurk streak ${streak}`;
+      title = fill(dict.tick.visitStarted, { n: streak });
       used = ["status", "lurkStreak"];
       tone = "ok";
     } else {
@@ -171,9 +189,9 @@ export function formatTickEvent(
       const reactions = asNumber(detail.reactions) ?? 0;
       const notes = asStringList(detail.notes);
       title = [
-        countWord(opened.length, "thread opened", "threads opened"),
-        countWord(postIds.length, "post", "posts"),
-        countWord(reactions, "reaction", "reactions"),
+        countWord(opened.length, dict.tick.threadOpenedOne, dict.tick.threadOpenedMany),
+        countWord(postIds.length, dict.tick.postOne, dict.tick.postMany),
+        countWord(reactions, dict.tick.reactionOne, dict.tick.reactionMany),
       ].join(" · ");
       const seen = new Set<string>();
       for (const id of opened) {
@@ -197,15 +215,17 @@ export function formatTickEvent(
   } else if (event.step === "memory") {
     const chars = asNumber(detail.chars);
     title =
-      chars == null ? "Notebook updated" : `Notebook updated (${chars} chars)`;
+      chars == null
+        ? dict.tick.notebook
+        : fill(dict.tick.notebookChars, { n: chars });
     const silent = asString(detail.silentReason);
-    if (silent) lines.push(`Silent: ${silent}`);
-    used = ["chars", "silentReason"];
+    if (silent) lines.push(fill(dict.tick.silent, { reason: silent }));
+    used = ["chars", "silentReason", "kind"];
     tone = "ok";
   } else if (event.step === "seen") {
     const ids = asStringList(detail.ids);
     const follow = asStringList(detail.follow);
-    title = `${countWord(ids.length, "thread seen", "threads seen")} · following ${follow.length}`;
+    title = `${countWord(ids.length, dict.tick.threadSeenOne, dict.tick.threadSeenMany)} · ${fill(dict.tick.following, { n: follow.length })}`;
     used = ["ids", "follow"];
     tone = "ok";
   } else if (event.step === "tool") {
@@ -217,24 +237,32 @@ export function formatTickEvent(
     used = ["tool", "query", "excerpt"];
     tone = "ok";
   } else if (event.step === "failed") {
-    title = asString(detail.error) ?? "Failed";
+    title = asString(detail.error) ?? dict.tick.failed;
     const notes = asStringList(detail.notes);
     lines.push(...notes);
     used = ["error", "notes"];
     tone = "error";
   } else if (event.step === "sleep") {
     if (detail.skipped) {
-      title = "Did not reschedule";
+      title = dict.tick.noReschedule;
       used = ["skipped", "reason"];
       tone = "muted";
     } else {
       const runAt = asString(detail.runAt);
       const stamp = runAt ? new Date(runAt) : null;
       title = stamp && !Number.isNaN(stamp.getTime())
-        ? `Sleeping until ${formatWhen(stamp, event.at.getTime())}`
-        : "Sleeping";
+        ? fill(dict.tick.sleepingUntil, { when: formatWhen(stamp, event.at.getTime(), locale) })
+        : dict.tick.sleeping;
       const n = asNumber(detail.contributions);
-      if (n != null) lines.push(countWord(n, "contribution this visit", "contributions this visit"));
+      if (n != null) {
+        lines.push(
+          countWord(
+            n,
+            dict.tick.contributionVisitOne,
+            dict.tick.contributionVisitMany,
+          ),
+        );
+      }
       used = ["runAt", "contributions"];
       tone = "ok";
     }

@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import { Floor } from "@/components/floor";
+import { LocaleProvider } from "@/i18n/locale-provider";
 import type { ThreadPostItem } from "@/lib/queries";
 
 vi.mock("@/app/actions", () => ({
@@ -26,12 +27,14 @@ const post: ThreadPostItem = {
 
 test("floor shows source links", () => {
   render(
-    <Floor
-      post={post}
-      threadId="t1"
-      canReact={false}
-      onQuote={() => undefined}
-    />,
+    <LocaleProvider locale="en">
+      <Floor
+        post={post}
+        threadId="t1"
+        canReact={false}
+        onQuote={() => undefined}
+      />
+    </LocaleProvider>,
   );
   const link = screen.getByRole("link", { name: "10-K" });
   expect(link.getAttribute("href")).toBe("https://www.sec.gov/a");

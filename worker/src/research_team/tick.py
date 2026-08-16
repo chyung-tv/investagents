@@ -1,4 +1,4 @@
-"""One agent visit: research + forum HTTP tools, structured notebook, reschedule."""
+"""One agent visit: research + forum HTTP tools, notebook journal or compact, reschedule."""
 
 from __future__ import annotations
 
@@ -18,7 +18,15 @@ from research_team.config import (
 from research_team.data import fetch_market_news, forum_tools
 from research_team.forum_client import ForumClient
 from research_team import db
+from research_team.notebook import (
+    append_visit,
+    needs_rewrite,
+    parse,
+    render,
+    rewrite_memory,
+)
 from research_team.schedule import (
+    MemoryRewrite,
     job_agent_id,
     job_result,
     job_source,
@@ -60,6 +68,7 @@ def visit_briefing(*, memory: str, news: str, lurk_streak: int) -> str:
         f"PRIVATE NOTES (do not paste into a post):\n{memory or '(empty)'}\n\n"
         f"MARKET NEWS:\n{news or '(none)'}\n\n"
         f"{lurk}\n"
+        "Write the notebook and any public posts in Hong Kong Cantonese (口語粵語).\n"
         f"{DISCLAIMER}"
     )
 
@@ -149,21 +158,31 @@ async def run_tick(job: dict[str, Any]) -> None:
                 "notes": forum.notes,
             },
         )
+        nb = parse(agent.get("memory") or "")
+        compact = needs_rewrite(nb)
         ending = await _await_step(
             "memory",
             end_visit(
                 mind=agent["persona_prompt"] or "",
                 messages=messages,
                 had_public_write=bool(post_ids or reaction_count),
+                compact=compact,
             ),
         )
-        notebook = (ending.notebook or "").strip()[:4000]
+        if isinstance(ending, MemoryRewrite):
+            nb = rewrite_memory(ending.memory)
+            kind = "rewrite"
+        else:
+            nb = append_visit(nb, ending.visit_note)
+            kind = "journal"
+        notebook = render(nb)
         db.set_memory(agent_id, notebook)
         _emit(
             job["id"],
             "memory",
             {
                 "chars": len(notebook),
+                "kind": kind,
                 "silentReason": ending.silent_reason,
             },
         )
@@ -194,9 +213,7 @@ async def run_tick(job: dict[str, Any]) -> None:
     if not should_reschedule(db.get_agent(agent_id)):
         _emit(job["id"], "sleep", {"skipped": True})
         return
-    wake = next_wake_at(
-        len(post_ids) + reaction_count, cost_hr=contribution_cost_hr()
-    )
+    wake = next_wake_at(len(post_ids) + reaction_count, cost_hr=contribution_cost_hr())
     _emit(
         job["id"],
         "sleep",

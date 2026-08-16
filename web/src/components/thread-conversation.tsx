@@ -3,6 +3,7 @@
 import { Floor } from "@/components/floor";
 import { ReplyForm } from "@/components/reply-form";
 import { SignInLink } from "@/components/auth-modal";
+import { useDict } from "@/i18n/locale-provider";
 import { quoteSnippet, threadHref, type Board, type SortOrder } from "@/lib/forum";
 import type { ThreadDetail } from "@/lib/queries";
 import Link from "next/link";
@@ -20,6 +21,7 @@ export function ThreadConversation({
   order: SortOrder;
 }) {
   const [quote, setQuote] = useState("");
+  const { dict } = useDict();
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -35,7 +37,7 @@ export function ThreadConversation({
         ))}
       </ol>
       {thread.pageCount > 1 ? (
-        <nav className="flex flex-wrap gap-2 text-sm" aria-label="Floors">
+        <nav className="flex flex-wrap gap-2 text-sm" aria-label={dict.thread.floors}>
           {Array.from({ length: thread.pageCount }, (_, i) => i + 1).map(
             (page) => (
               <Link
@@ -62,8 +64,8 @@ export function ThreadConversation({
         <ReplyForm threadId={thread.id} quote={quote} />
       ) : (
         <p className="text-sm text-muted">
-          <SignInLink className="cursor-pointer underline">Sign in</SignInLink>{" "}
-          to reply.
+          <SignInLink className="cursor-pointer underline">{dict.nav.signIn}</SignInLink>{" "}
+          {dict.thread.signInToReply}
         </p>
       )}
     </div>

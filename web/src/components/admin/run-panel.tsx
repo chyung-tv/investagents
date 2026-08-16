@@ -2,7 +2,9 @@
 
 import { loadAgentRunViewAction, runAgentNowAction } from "@/app/actions";
 import type { AgentRunView, RunTickDto } from "@/lib/agent-run";
-import { PIPELINE_STEPS, formatWhen } from "@/lib/tick-log";
+import { fill } from "@/i18n/dictionary";
+import { useDict } from "@/i18n/locale-provider";
+import { formatWhen } from "@/lib/tick-log";
 import { useEffect, useState } from "react";
 import { SubmitButton } from "./submit-button";
 
@@ -17,6 +19,7 @@ export function AgentRunPanel({
   disabled: boolean;
   initial: AgentRunView;
 }) {
+  const { locale, dict } = useDict();
   const [view, setView] = useState(initial);
   useEffect(() => {
     setView(initial);
@@ -31,31 +34,32 @@ export function AgentRunPanel({
     return () => clearInterval(id);
   }, [agentId, inflight]);
 
-  const latest = view.ticks[0] ?? null;
   const neverRun = view.ticks.length === 0;
   const nextWake = view.nextWake ? new Date(view.nextWake) : null;
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+    <section className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h2 className="text-sm font-semibold">Run</h2>
+          <h2 className="text-sm font-semibold">{dict.admin.run}</h2>
           <p className="text-xs text-muted">
             {nextWake
-              ? `Next wake ${formatWhen(nextWake)}`
+              ? fill(dict.admin.nextWakeFull, {
+                  when: formatWhen(nextWake, Date.now(), locale),
+                })
               : neverRun
-                ? "Never run"
-                : "No scheduled wake"}
+                ? dict.admin.neverRun
+                : dict.admin.noScheduledWake}
           </p>
         </div>
         <form action={runAgentNowAction}>
           <input type="hidden" name="agentId" value={agentId} />
           <SubmitButton
-            pendingLabel="Queuing…"
+            pendingLabel={dict.admin.queuing}
             disabled={disabled || !view.hasSecret}
             className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background"
           >
-            Run now
+            {dict.admin.runNow}
           </SubmitButton>
         </form>
       </div>
@@ -64,20 +68,19 @@ export function AgentRunPanel({
           role="status"
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         >
-          Saved. This agent will not visit until you Run now.
+          {dict.admin.savedRunNow}
         </p>
       ) : null}
       {!view.hasSecret ? (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-          No visit key yet. Rotate the API key before running.
+          {dict.admin.noVisitKey}
         </p>
       ) : null}
       {disabled ? (
-        <p className="text-sm text-muted">Disabled. Enable before running.</p>
+        <p className="text-sm text-muted">{dict.admin.disabledEnable}</p>
       ) : null}
-      {latest ? <Stepper tick={latest} /> : null}
       {neverRun ? (
-        <p className="text-xs text-muted">No ticks yet.</p>
+        <p className="text-xs text-muted">{dict.admin.noTicks}</p>
       ) : (
         <ol className="flex flex-col gap-3">
           {view.ticks.map((tick) => (
@@ -89,41 +92,8 @@ export function AgentRunPanel({
   );
 }
 
-function Stepper({ tick }: { tick: RunTickDto }) {
-  const current = tick.stage;
-  return (
-    <ol className="flex flex-wrap gap-x-2 gap-y-1 text-[11px] uppercase tracking-wide text-muted">
-      {PIPELINE_STEPS.map((step, index) => {
-        const active = current === step;
-        const failed = current === "failed";
-        return (
-          <li
-            key={step}
-            className={
-              active
-                ? "font-semibold text-foreground"
-                : failed
-                  ? "text-red-600 dark:text-red-400"
-                  : ""
-            }
-            aria-current={active ? "step" : undefined}
-          >
-            {index > 0 ? <span className="mr-2 text-border">/</span> : null}
-            {step}
-          </li>
-        );
-      })}
-      {current === "failed" ? (
-        <li className="font-semibold text-red-600 dark:text-red-400" aria-current="step">
-          <span className="mr-2 text-border">/</span>
-          failed
-        </li>
-      ) : null}
-    </ol>
-  );
-}
-
 function TickEntry({ tick }: { tick: RunTickDto }) {
+  const { locale, dict } = useDict();
   const stamp = new Date(tick.doneAt ?? tick.lockedAt ?? tick.runAt);
   const error = tick.stage === "failed" || Boolean(tick.error);
   return (
@@ -131,7 +101,7 @@ function TickEntry({ tick }: { tick: RunTickDto }) {
       <details>
         <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-2">
           <span className="text-xs text-muted" title={stamp.toISOString()}>
-            {tick.source} · {formatWhen(stamp)}
+            {tick.source} · {formatWhen(stamp, Date.now(), locale)}
           </span>
           <span
             className={
@@ -144,7 +114,7 @@ function TickEntry({ tick }: { tick: RunTickDto }) {
           </span>
         </summary>
         {tick.events.length === 0 ? (
-          <p className="mt-1 text-xs text-muted">No events recorded.</p>
+          <p className="mt-1 text-xs text-muted">{dict.admin.noEvents}</p>
         ) : (
           <ol className="mt-1 flex flex-col gap-1 text-xs leading-snug text-muted">
             {tick.events.map((event) => (
@@ -161,7 +131,7 @@ function TickEntry({ tick }: { tick: RunTickDto }) {
                     {event.title}
                   </span>
                   <span className="text-[11px]" title={event.at}>
-                    {formatWhen(new Date(event.at))}
+                    {formatWhen(new Date(event.at), Date.now(), locale)}
                   </span>
                 </div>
                 {event.links.length > 0 ? (
@@ -180,7 +150,7 @@ function TickEntry({ tick }: { tick: RunTickDto }) {
                 ) : null}
                 {event.lines.length > 0 ? (
                   <details className="mt-0.5">
-                    <summary className="cursor-pointer">Detail</summary>
+                    <summary className="cursor-pointer">{dict.admin.detail}</summary>
                     <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px]">
                       {event.lines.join("\n")}
                     </pre>
@@ -188,7 +158,7 @@ function TickEntry({ tick }: { tick: RunTickDto }) {
                 ) : null}
                 {event.extra ? (
                   <details className="mt-0.5">
-                    <summary className="cursor-pointer">Raw detail</summary>
+                    <summary className="cursor-pointer">{dict.admin.rawDetail}</summary>
                     <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px]">
                       {event.extra}
                     </pre>

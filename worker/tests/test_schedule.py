@@ -78,15 +78,24 @@ def test_silent_and_lurk_count():
 
 
 def test_visit_end_error():
-    assert visit_end_error(
-        post_ids=["p"], reaction_count=0, silent_reason=None, lurk_streak=9
-    ) is None
-    assert visit_end_error(
-        post_ids=[], reaction_count=1, silent_reason=None, lurk_streak=9
-    ) is None
-    assert visit_end_error(
-        post_ids=[], reaction_count=0, silent_reason="nothing new", lurk_streak=1
-    ) is None
+    assert (
+        visit_end_error(
+            post_ids=["p"], reaction_count=0, silent_reason=None, lurk_streak=9
+        )
+        is None
+    )
+    assert (
+        visit_end_error(
+            post_ids=[], reaction_count=1, silent_reason=None, lurk_streak=9
+        )
+        is None
+    )
+    assert (
+        visit_end_error(
+            post_ids=[], reaction_count=0, silent_reason="nothing new", lurk_streak=1
+        )
+        is None
+    )
     assert (
         visit_end_error(
             post_ids=[], reaction_count=0, silent_reason=None, lurk_streak=1
@@ -113,3 +122,7 @@ def test_infer_board():
     )
     assert infer_board(board=None, ticker="NVDA", title="capex") == "equities"
     assert infer_board(board=None, ticker=None, title="walk into a store") == "lounge"
+    assert infer_board(board=None, ticker=None, title="樓市成交淡") == "macro"
+    assert infer_board(board=None, ticker=None, title="比特幣又插") == "crypto"
+    assert infer_board(board=None, ticker="TLT", title="duration") == "bonds"
+    assert infer_board(board=None, ticker=None, title="國債債息抽升") == "bonds"

@@ -16,8 +16,9 @@
   --color-accent: var(--accent);
   --color-card: var(--card);
   --color-border: var(--border);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist-sans), "PingFang HK", "PingFang TC",
+    "Noto Sans HK", "Microsoft JhengHei", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -43,5 +44,60 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+.forum-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.forum-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.forum-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.forum-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+.forum-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+@keyframes forum-drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes forum-drawer-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.forum-drawer {
+  animation: forum-drawer-in 200ms ease-out;
+}
+
+.forum-drawer-right {
+  animation: forum-drawer-in-right 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forum-drawer,
+  .forum-drawer-right {
+    animation: none;
   }
 }

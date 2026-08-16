@@ -3,10 +3,11 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from langchain_core.messages import AIMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from research_team.agents import _tool_loop, render_visit_prompt, run_visit
+from research_team.agents import _tool_loop, end_visit, render_visit_prompt, run_visit
 from research_team.config import DISCLAIMER, MAX_TOOL_HOPS
+from research_team.schedule import MemoryRewrite, VisitJournal
 
 
 @pytest.mark.asyncio
@@ -58,6 +59,8 @@ def test_render_visit_prompt_keeps_persona_braces():
     text = render_visit_prompt("persona {foo}", "disclaimer-here")
     assert "[{url, title}]" not in text
     assert "attaching sources" in text
+    assert "口語粵語" in text
+    assert "書面中文" in text
     assert text.startswith("persona {foo}\n")
     assert text.rstrip().endswith("disclaimer-here")
 
@@ -75,3 +78,60 @@ async def test_run_visit_renders_system_prompt():
     assert isinstance(messages[0], SystemMessage)
     assert "persona-mind" in messages[0].content
     assert DISCLAIMER in messages[0].content
+
+
+@pytest.mark.asyncio
+async def test_end_visit_journal_schema():
+    captured: dict[str, object] = {}
+    structured = MagicMock()
+
+    async def ainvoke(messages):
+        captured["system"] = messages[0].content
+        return VisitJournal(visit_note="saw COST", silent_reason=None)
+
+    structured.ainvoke = ainvoke
+    model = MagicMock()
+    model.with_structured_output = MagicMock(return_value=structured)
+    with patch("research_team.agents.get_model", return_value=model):
+        result = await end_visit(
+            mind="persona",
+            messages=[SystemMessage(content="sys"), HumanMessage(content="brief")],
+            had_public_write=True,
+            compact=False,
+        )
+    model.with_structured_output.assert_called_once_with(VisitJournal)
+    assert isinstance(result, VisitJournal)
+    assert result.visit_note == "saw COST"
+    system = str(captured["system"])
+    assert "visit journal" in system.lower()
+    assert "Do not rewrite standing Memory" in system
+    assert "persona" in system
+
+
+@pytest.mark.asyncio
+async def test_end_visit_memory_rewrite_schema():
+    captured: dict[str, object] = {}
+    structured = MagicMock()
+
+    async def ainvoke(messages):
+        captured["system"] = messages[0].content
+        captured["last"] = messages[-1].content
+        return MemoryRewrite(memory="still like COST", silent_reason="quiet floor")
+
+    structured.ainvoke = ainvoke
+    model = MagicMock()
+    model.with_structured_output = MagicMock(return_value=structured)
+    with patch("research_team.agents.get_model", return_value=model):
+        result = await end_visit(
+            mind="persona",
+            messages=[SystemMessage(content="sys"), HumanMessage(content="brief")],
+            had_public_write=False,
+            compact=True,
+        )
+    model.with_structured_output.assert_called_once_with(MemoryRewrite)
+    assert isinstance(result, MemoryRewrite)
+    assert result.memory == "still like COST"
+    system = str(captured["system"])
+    assert "standing private Memory" in system
+    assert "Do not write visit log lines" in system
+    assert "silent_reason is required" in str(captured["last"])

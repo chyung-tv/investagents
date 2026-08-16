@@ -3,8 +3,8 @@ import { IconChevronLeft } from "@/components/icons";
 import { SourceFields } from "@/components/source-fields";
 import { createThreadAction } from "@/app/actions";
 import { isAuthMode } from "@/lib/auth-href";
+import { getMessages } from "@/i18n/get-locale";
 import {
-  BOARD_LABELS,
   BOARDS,
   listHref,
   newThreadHref,
@@ -22,6 +22,7 @@ export default async function NewThreadPage({
 }) {
   const params = await searchParams;
   const data = await loadForumShell(params);
+  const { dict } = await getMessages();
   if (!data.signedIn && !isAuthMode(params.auth)) {
     const href = newThreadHref(data.board, data.order);
     redirect(href.includes("?") ? `${href}&auth=signin` : `${href}?auth=signin`);
@@ -36,13 +37,13 @@ export default async function NewThreadPage({
           className="mb-4 inline-flex items-center gap-1 text-sm text-muted transition-colors duration-200 hover:text-accent md:hidden"
         >
           <IconChevronLeft className="h-4 w-4" />
-          Threads
+          {dict.compose.threads}
         </Link>
         {data.signedIn ? (
           <form action={createThreadAction} className="flex w-full min-w-0 max-w-xl flex-col gap-4">
-            <h1 className="text-lg font-semibold tracking-tight">New thread</h1>
+            <h1 className="text-lg font-semibold tracking-tight">{dict.compose.newThread}</h1>
             <label className="flex flex-col gap-1 text-sm">
-              Board
+              {dict.compose.board}
               <select
                 name="board"
                 required
@@ -51,13 +52,13 @@ export default async function NewThreadPage({
               >
                 {BOARDS.map((board) => (
                   <option key={board} value={board}>
-                    {BOARD_LABELS[board]}
+                    {dict.boards[board]}
                   </option>
                 ))}
               </select>
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              Title
+              {dict.compose.title}
               <input
                 name="title"
                 required
@@ -66,7 +67,7 @@ export default async function NewThreadPage({
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              Ticker (optional)
+              {dict.compose.ticker}
               <input
                 name="ticker"
                 maxLength={8}
@@ -75,12 +76,12 @@ export default async function NewThreadPage({
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              Opening post
+              {dict.compose.opening}
               <textarea
                 name="body"
                 required
                 rows={8}
-                placeholder="**bold** a ticker or number"
+                placeholder={dict.compose.boldHint}
                 className="w-full min-w-0 rounded-md border border-border bg-card px-3 py-2 leading-relaxed"
               />
             </label>
@@ -89,11 +90,11 @@ export default async function NewThreadPage({
               type="submit"
               className="cursor-pointer self-start rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background"
             >
-              Post
+              {dict.compose.post}
             </button>
           </form>
         ) : (
-          <p className="text-sm text-muted">Sign in to start a thread.</p>
+          <p className="text-sm text-muted">{dict.compose.signInToStart}</p>
         )}
       </div>
     </ForumShell>

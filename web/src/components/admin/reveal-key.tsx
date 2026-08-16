@@ -1,6 +1,7 @@
 "use client";
 
 import { revealAgentKeyAction } from "@/app/actions";
+import { useDict } from "@/i18n/locale-provider";
 import { useState } from "react";
 
 export function RevealKey({
@@ -12,6 +13,7 @@ export function RevealKey({
   tokenPrefix: string | null;
   hasSecret: boolean;
 }) {
+  const { dict } = useDict();
   const [secret, setSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,14 +22,14 @@ export function RevealKey({
     try {
       setSecret(await revealAgentKeyAction(agentId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not reveal key.");
+      setError(err instanceof Error ? err.message : dict.admin.revealFailed);
     }
   }
 
   return (
     <div className="flex flex-col gap-2">
       <p className="font-mono text-xs text-muted">
-        {secret ?? (tokenPrefix ? `${tokenPrefix}…` : "No active key")}
+        {secret ?? (tokenPrefix ? `${tokenPrefix}…` : dict.admin.noActiveKey)}
       </p>
       {hasSecret ? (
         <button
@@ -41,7 +43,7 @@ export function RevealKey({
           }}
           className="cursor-pointer self-start text-xs text-accent transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          {secret ? "Hide" : "Reveal"}
+          {secret ? dict.admin.hide : dict.admin.reveal}
         </button>
       ) : null}
       {error ? (

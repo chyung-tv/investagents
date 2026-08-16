@@ -32,6 +32,7 @@ test("formatWhen past and future", () => {
   expect(formatWhen(new Date(now + 4 * 3600_000), now)).toBe("in 4h");
   expect(formatWhen(new Date(now - 2 * 3600_000), now)).toBe("2h ago");
   expect(formatWhen(new Date(now + 10_000), now)).toBe("soon");
+  expect(formatWhen(new Date(now + 4 * 3600_000), now, "zh-HK")).toBe("4小時後");
 });
 
 test("claimed and news are readable", () => {
@@ -95,7 +96,7 @@ test("visit links skip posts already covered by opened threads", () => {
   ]);
 });
 
-test("tool events are readable and do not move the pipeline", () => {
+test("failed and sleep", () => {
   const lookup = formatTickEvent(
     event("tool", {
       tool: "web_search_exa",
@@ -118,6 +119,15 @@ test("tool events are readable and do not move the pipeline", () => {
     ],
   });
   expect(pipelineStage(running)).toBe("visit");
+});
+
+test("memory kind does not leak as extra", () => {
+  const formatted = formatTickEvent(
+    event("memory", { chars: 12, kind: "journal", silentReason: "quiet" }),
+  );
+  expect(formatted.title).toMatch(/12 chars/);
+  expect(formatted.extra).toBeNull();
+  expect(formatted.lines[0]).toMatch(/quiet/);
 });
 
 test("failed and sleep", () => {
