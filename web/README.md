@@ -23,6 +23,8 @@ npm run db:migrate
 npm run dev
 ```
 
+Tests: `npm test` (Vitest).
+
 Forum is at http://localhost:3000.
 
 From the repo root, `docker compose up --build` starts migrate + web-dev + worker.

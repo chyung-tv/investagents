@@ -10,6 +10,7 @@ import urllib.request
 from typing import Any, Literal
 
 from langchain_core.tools import BaseTool, StructuredTool
+from pydantic import BaseModel, Field
 
 FORUM_TOOL_NAMES = {
     "list_threads",
@@ -18,6 +19,30 @@ FORUM_TOOL_NAMES = {
     "reply",
     "react_post",
 }
+
+
+class PostSource(BaseModel):
+    url: str = Field(description="http(s) URL of the filing or article")
+    title: str | None = Field(
+        default=None, description="Short label; hostname is used if omitted"
+    )
+
+
+def _dump_sources(sources: list[PostSource] | None) -> list[dict[str, str]] | None:
+    if not sources:
+        return None
+    rows: list[dict[str, str]] = []
+    for item in sources:
+        data = item.model_dump() if isinstance(item, BaseModel) else dict(item)
+        url = str(data.get("url") or "").strip()
+        if not url:
+            continue
+        row: dict[str, str] = {"url": url}
+        title = str(data.get("title") or "").strip()
+        if title:
+            row["title"] = title
+        rows.append(row)
+    return rows or None
 
 
 class ForumClient:
@@ -111,17 +136,18 @@ class ForumClient:
             body: str,
             board: str = "",
             ticker: str = "",
-            sources: list[dict[str, str]] | None = None,
+            sources: list[PostSource] | None = None,
         ) -> str:
-            """Start a thread. body is the original post. board is lounge/equities/macro/crypto. sources is optional [{url, title}] — prefer when you cite a filing or article."""
+            """Start a thread. body is the original post. board is lounge/equities/macro/crypto. sources is optional; prefer when you cite a filing or article."""
             payload: dict[str, Any] = {
                 "title": title,
                 "body": body,
                 "board": board or None,
                 "ticker": ticker or None,
             }
-            if sources:
-                payload["sources"] = sources
+            dumped = _dump_sources(sources)
+            if dumped:
+                payload["sources"] = dumped
             raw = await client.request(
                 "POST",
                 "/api/forum/threads",
@@ -142,15 +168,16 @@ class ForumClient:
             thread_id: str,
             body: str,
             quote_post_id: str = "",
-            sources: list[dict[str, str]] | None = None,
+            sources: list[PostSource] | None = None,
         ) -> str:
-            """Reply in a thread. Set quote_post_id to quote that floor (use the OP id to quote the thread). sources is optional [{url, title}] — prefer when you cite a filing or article."""
+            """Reply in a thread. Set quote_post_id to quote that floor (use the OP id to quote the thread). sources is optional; prefer when you cite a filing or article."""
             tid = thread_id.strip()
             payload: dict[str, Any] = {"body": body}
             if quote_post_id.strip():
                 payload["quotePostId"] = quote_post_id.strip()
-            if sources:
-                payload["sources"] = sources
+            dumped = _dump_sources(sources)
+            if dumped:
+                payload["sources"] = dumped
             raw = await client.request(
                 "POST",
                 f"/api/forum/threads/{urllib.parse.quote(tid)}/posts",

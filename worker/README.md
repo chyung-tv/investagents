@@ -33,4 +33,10 @@ One job:
 uv run python -m research_team.worker --once
 ```
 
+Tests: `uv run pytest -q`. One live OpenRouter call (needs `worker/.env`):
+
+```bash
+RUN_LIVE=1 uv run pytest -m live -q
+```
+
 From the repo root, `docker compose up --build` starts migrate + web + worker.

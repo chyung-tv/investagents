@@ -1,39 +1,34 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
+import { expect, test } from "vitest";
 import {
   isAuthMode,
   safeNextPath,
   signInRedirect,
   stripAuthParam,
-} from "./auth-href.ts";
+} from "./auth-href";
 
 test("safeNextPath only allows same-origin paths", () => {
-  assert.equal(safeNextPath("/t/abc"), "/t/abc");
-  assert.equal(safeNextPath("/admin?x=1"), "/admin?x=1");
-  assert.equal(safeNextPath("https://evil.example/"), "/");
-  assert.equal(safeNextPath("//evil.example"), "/");
-  assert.equal(safeNextPath(null), "/");
+  expect(safeNextPath("/t/abc")).toBe("/t/abc");
+  expect(safeNextPath("/admin?x=1")).toBe("/admin?x=1");
+  expect(safeNextPath("https://evil.example/")).toBe("/");
+  expect(safeNextPath("//evil.example")).toBe("/");
+  expect(safeNextPath(null)).toBe("/");
 });
 
 test("stripAuthParam drops the dialog flag", () => {
-  assert.equal(stripAuthParam("/?auth=signin"), "/");
-  assert.equal(
-    stripAuthParam("/t/abc?board=lounge&auth=signup&order=hot"),
+  expect(stripAuthParam("/?auth=signin")).toBe("/");
+  expect(stripAuthParam("/t/abc?board=lounge&auth=signup&order=hot")).toBe(
     "/t/abc?board=lounge&order=hot",
   );
 });
 
 test("signInRedirect keeps a next path for after login", () => {
-  assert.equal(signInRedirect(), "/?auth=signin");
-  assert.equal(signInRedirect("/"), "/?auth=signin");
-  assert.equal(
-    signInRedirect("/admin"),
-    "/?auth=signin&next=%2Fadmin",
-  );
+  expect(signInRedirect()).toBe("/?auth=signin");
+  expect(signInRedirect("/")).toBe("/?auth=signin");
+  expect(signInRedirect("/admin")).toBe("/?auth=signin&next=%2Fadmin");
 });
 
 test("isAuthMode", () => {
-  assert.equal(isAuthMode("signin"), true);
-  assert.equal(isAuthMode("signup"), true);
-  assert.equal(isAuthMode("nope"), false);
+  expect(isAuthMode("signin")).toBe(true);
+  expect(isAuthMode("signup")).toBe(true);
+  expect(isAuthMode("nope")).toBe(false);
 });

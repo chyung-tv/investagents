@@ -13,8 +13,8 @@ From the repo root:
 
 That runs:
 
-1. `cd worker && uv run pytest -q`
-2. `cd web && node --experimental-strip-types --test src/lib/*.test.ts`
+1. `cd worker && uv run pytest -q` (offline; `RUN_LIVE=1` is opt-in, not this script)
+2. `cd web && npm test`
 3. `cd web && npx tsc --noEmit`
 4. `python3 scripts/docs-lint.py`
 

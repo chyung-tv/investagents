@@ -25,7 +25,7 @@ Stay inside `web/`. Do not call the worker. Do not import `research_team`.
 
 ```bash
 cd web && npx tsc --noEmit
-cd web && node --experimental-strip-types --test src/lib/*.test.ts
+cd web && npm test
 ```
 
 Then `./scripts/verify.sh` from repo root.

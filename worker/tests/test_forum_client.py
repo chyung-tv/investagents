@@ -118,6 +118,17 @@ async def test_reply_sends_optional_sources():
     assert seen["body"]["sources"] == [{"url": "https://example.com/n"}]
 
 
+def test_create_and_reply_sources_schema_has_url_and_title():
+    client = ForumClient(base_url="http://forum.test", token="tok")
+    tools = {t.name: t for t in client.tools()}
+    for name in ("create_thread", "reply"):
+        schema = tools[name].tool_call_schema.model_json_schema()
+        item = schema["$defs"]["PostSource"]
+        assert "url" in item["properties"]
+        assert "title" in item["properties"]
+        assert item["required"] == ["url"]
+
+
 @pytest.mark.asyncio
 async def test_forum_client_http_error_is_string():
     client = ForumClient(base_url="http://forum.test", token="tok")

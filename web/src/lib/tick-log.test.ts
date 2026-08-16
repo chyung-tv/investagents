@@ -1,12 +1,11 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
+import { expect, test } from "vitest";
 import {
   formatTickEvent,
   formatWhen,
   pipelineStage,
   tickStatus,
-} from "./tick-log.ts";
-import type { AgentTickRow, TickEventRow } from "./tick-log.ts";
+} from "./tick-log";
+import type { AgentTickRow, TickEventRow } from "./tick-log";
 
 const at = new Date("2026-08-15T12:00:00.000Z");
 
@@ -30,27 +29,29 @@ function tick(partial: Partial<AgentTickRow>): AgentTickRow {
 
 test("formatWhen past and future", () => {
   const now = Date.parse("2026-08-15T12:00:00.000Z");
-  assert.equal(formatWhen(new Date(now + 4 * 3600_000), now), "in 4h");
-  assert.equal(formatWhen(new Date(now - 2 * 3600_000), now), "2h ago");
-  assert.equal(formatWhen(new Date(now + 10_000), now), "soon");
+  expect(formatWhen(new Date(now + 4 * 3600_000), now)).toBe("in 4h");
+  expect(formatWhen(new Date(now - 2 * 3600_000), now)).toBe("2h ago");
+  expect(formatWhen(new Date(now + 10_000), now)).toBe("soon");
 });
 
 test("claimed and news are readable", () => {
-  const claimed = formatTickEvent(event("claimed", { source: "manual", agentId: "x" }));
-  assert.equal(claimed.title, "Claimed · manual");
-  assert.equal(claimed.extra, null);
+  const claimed = formatTickEvent(
+    event("claimed", { source: "manual", agentId: "x" }),
+  );
+  expect(claimed.title).toBe("Claimed · manual");
+  expect(claimed.extra).toBeNull();
   const news = formatTickEvent(
     event("news", { chars: 12, text: "CPI printed." }),
   );
-  assert.match(news.title, /12 chars/);
-  assert.deepEqual(news.lines, ["CPI printed."]);
+  expect(news.title).toMatch(/12 chars/);
+  expect(news.lines).toEqual(["CPI printed."]);
 });
 
 test("visit started and done", () => {
   const started = formatTickEvent(
     event("visit", { status: "started", lurkStreak: 2 }),
   );
-  assert.equal(started.title, "Visit started · lurk streak 2");
+  expect(started.title).toBe("Visit started · lurk streak 2");
   const done = formatTickEvent(
     event("visit", {
       opened: ["t1"],
@@ -63,9 +64,9 @@ test("visit started and done", () => {
       posts: new Map([["p1", { threadId: "t1", title: "NVDA print" }]]),
     },
   );
-  assert.match(done.title, /1 thread opened/);
-  assert.deepEqual(done.links, [{ href: "/t/t1", label: "NVDA print" }]);
-  assert.deepEqual(done.lines, ["replied t1"]);
+  expect(done.title).toMatch(/1 thread opened/);
+  expect(done.links).toEqual([{ href: "/t/t1", label: "NVDA print" }]);
+  expect(done.lines).toEqual(["replied t1"]);
 });
 
 test("visit links skip posts already covered by opened threads", () => {
@@ -87,7 +88,7 @@ test("visit links skip posts already covered by opened threads", () => {
       ]),
     },
   );
-  assert.deepEqual(done.links, [
+  expect(done.links).toEqual([
     { href: "/t/t1", label: "NVDA print" },
     { href: "/t/t2", label: "Housing" },
     { href: "/t/t3", label: "TSLA ask" },
@@ -102,8 +103,11 @@ test("tool events are readable and do not move the pipeline", () => {
       excerpt: "Fortune says $2T.",
     }),
   );
-  assert.equal(lookup.title, "web_search_exa");
-  assert.deepEqual(lookup.lines, ["{'query': 'Anthropic IPO'}", "Fortune says $2T."]);
+  expect(lookup.title).toBe("web_search_exa");
+  expect(lookup.lines).toEqual([
+    "{'query': 'Anthropic IPO'}",
+    "Fortune says $2T.",
+  ]);
   const running = tick({
     lockedAt: new Date(),
     events: [
@@ -113,34 +117,34 @@ test("tool events are readable and do not move the pipeline", () => {
       event("tool", { tool: "web_search_exa" }),
     ],
   });
-  assert.equal(pipelineStage(running), "visit");
+  expect(pipelineStage(running)).toBe("visit");
 });
 
 test("failed and sleep", () => {
   const failed = formatTickEvent(event("failed", { error: "timeout" }));
-  assert.equal(failed.tone, "error");
-  assert.equal(failed.title, "timeout");
+  expect(failed.tone).toBe("error");
+  expect(failed.title).toBe("timeout");
   const sleep = formatTickEvent(
     event("sleep", {
       contributions: 2,
       runAt: "2026-08-15T16:00:00.000Z",
     }),
   );
-  assert.match(sleep.title, /Sleeping until/);
+  expect(sleep.title).toMatch(/Sleeping until/);
   const skipped = formatTickEvent(event("sleep", { skipped: true }));
-  assert.equal(skipped.title, "Did not reschedule");
+  expect(skipped.title).toBe("Did not reschedule");
 });
 
 test("pipeline and status", () => {
   const queued = tick({});
-  assert.equal(pipelineStage(queued), "queued");
-  assert.equal(tickStatus(queued), "queued");
+  expect(pipelineStage(queued)).toBe("queued");
+  expect(tickStatus(queued)).toBe("queued");
   const running = tick({
     lockedAt: new Date(),
     events: [event("claimed"), event("news")],
   });
-  assert.equal(pipelineStage(running), "news");
-  assert.equal(tickStatus(running), "running");
+  expect(pipelineStage(running)).toBe("news");
+  expect(tickStatus(running)).toBe("running");
   const done = tick({
     doneAt: at,
     result: {
@@ -151,6 +155,6 @@ test("pipeline and status", () => {
     },
     events: [event("sleep")],
   });
-  assert.equal(pipelineStage(done), "sleep");
-  assert.equal(tickStatus(done), "2 contributions");
+  expect(pipelineStage(done)).toBe("sleep");
+  expect(tickStatus(done)).toBe("2 contributions");
 });

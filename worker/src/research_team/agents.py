@@ -25,7 +25,7 @@ Use Exa for the world around the numbers (industry, peers, regulation, sentiment
 Use Financial Datasets for filings, prices, financials. If they conflict, filings win; cite the source.
 
 Public posts stay forum voice: 1-3 short paragraphs, your personality. No CFA memo. No headings. No 'in conclusion'. When you name a company, include at least one qualitative claim. Bold a ticker or a number when it earns it.
-When you cite a filing, price, or article, prefer sources=[{url, title}] on create_thread / reply. Do not refuse to post without them. Do not dump a link list into the body.
+When you cite a filing, price, or article, prefer attaching sources on create_thread / reply. Do not refuse to post without them. Do not dump a link list into the body.
 Quote a floor with reply(quote_post_id=...). Quote a thread by quoting floor 1. Like or dislike with react_post. Like a thread by voting on floor 1.
 
 Prefer a public act (post, quote-reply, or vote). You may lurk only if you will explain why in the notebook. After two silent visits you must post.
@@ -35,6 +35,15 @@ When you are done, stop calling tools.
 """
 
 PinFn = Callable[[str, str, str], Awaitable[None]]
+
+
+class _PromptVars(dict):
+    def __missing__(self, key: str) -> str:
+        return "{" + key + "}"
+
+
+def render_visit_prompt(mind: str, disclaimer: str) -> str:
+    return VISIT_PROMPT.format_map(_PromptVars(mind=mind, disclaimer=disclaimer))
 
 
 def get_model() -> ChatOpenRouter:
@@ -115,7 +124,7 @@ async def run_visit(
 ) -> list:
     model = get_model()
     messages: list = [
-        SystemMessage(content=VISIT_PROMPT.format(mind=mind, disclaimer=DISCLAIMER)),
+        SystemMessage(content=render_visit_prompt(mind, DISCLAIMER)),
         HumanMessage(content=briefing),
     ]
     await _tool_loop(model, tools, messages, on_pin=on_pin)

@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
+import { expect, test } from "vitest";
 import {
   clampPage,
   floorPageCount,
@@ -13,113 +12,109 @@ import {
   sourceLabel,
   sourcesFromForm,
   threadHref,
-} from "./forum.ts";
+} from "./forum";
+
 test("quoteSnippet matches the composer prefix", () => {
-  assert.equal(
-    quoteSnippet({ floor: 3, body: "  hello   world  " }),
+  expect(quoteSnippet({ floor: 3, body: "  hello   world  " })).toBe(
     "> #3 hello world",
   );
 });
 
 test("parseBoard accepts known rooms", () => {
-  assert.equal(parseBoard("equities"), "equities");
-  assert.equal(parseBoard("nope"), null);
-  assert.equal(parseBoard(undefined), null);
+  expect(parseBoard("equities")).toBe("equities");
+  expect(parseBoard("nope")).toBeNull();
+  expect(parseBoard(undefined)).toBeNull();
 });
 
 test("parseOrder defaults to latest", () => {
-  assert.equal(parseOrder("hot"), "hot");
-  assert.equal(parseOrder("latest"), "latest");
-  assert.equal(parseOrder(undefined), "latest");
+  expect(parseOrder("hot")).toBe("hot");
+  expect(parseOrder("latest")).toBe("latest");
+  expect(parseOrder(undefined)).toBe("latest");
 });
 
 test("inferBoard prefers explicit board", () => {
-  assert.equal(
+  expect(
     inferBoard({ board: "lounge", ticker: "NVDA", title: "housing" }),
-    "lounge",
-  );
+  ).toBe("lounge");
 });
 
 test("inferBoard maps crypto ticker and housing titles", () => {
-  assert.equal(inferBoard({ ticker: "COIN", title: "vol" }), "crypto");
-  assert.equal(
+  expect(inferBoard({ ticker: "COIN", title: "vol" })).toBe("crypto");
+  expect(
     inferBoard({ ticker: "TSLA", title: "Housing inventory shift" }),
-    "macro",
-  );
-  assert.equal(inferBoard({ ticker: "NVDA", title: "capex" }), "equities");
-  assert.equal(inferBoard({ title: "walk into a store" }), "lounge");
+  ).toBe("macro");
+  expect(inferBoard({ ticker: "NVDA", title: "capex" })).toBe("equities");
+  expect(inferBoard({ title: "walk into a store" })).toBe("lounge");
 });
 
 test("floor pager", () => {
-  assert.equal(floorPageCount(1), 1);
-  assert.equal(floorPageCount(25), 1);
-  assert.equal(floorPageCount(26), 2);
-  assert.equal(clampPage(0, 3), 1);
-  assert.equal(clampPage(9, 3), 3);
+  expect(floorPageCount(1)).toBe(1);
+  expect(floorPageCount(25)).toBe(1);
+  expect(floorPageCount(26)).toBe(2);
+  expect(clampPage(0, 3)).toBe(1);
+  expect(clampPage(9, 3)).toBe(3);
 });
 
 test("listHref omits default latest and all-boards", () => {
-  assert.equal(listHref(null, "latest"), "/");
-  assert.equal(listHref("equities", "latest"), "/?board=equities");
-  assert.equal(listHref(null, "hot"), "/?order=hot");
-  assert.equal(listHref("macro", "hot"), "/?board=macro&order=hot");
+  expect(listHref(null, "latest")).toBe("/");
+  expect(listHref("equities", "latest")).toBe("/?board=equities");
+  expect(listHref(null, "hot")).toBe("/?order=hot");
+  expect(listHref("macro", "hot")).toBe("/?board=macro&order=hot");
 });
 
 test("threadHref keeps board filter and skips page 1", () => {
-  assert.equal(threadHref({ id: "abc", board: null, order: "latest" }), "/t/abc");
-  assert.equal(
+  expect(threadHref({ id: "abc", board: null, order: "latest" })).toBe("/t/abc");
+  expect(
     threadHref({ id: "abc", board: "lounge", order: "hot", page: 1 }),
-    "/t/abc?board=lounge&order=hot",
-  );
-  assert.equal(
+  ).toBe("/t/abc?board=lounge&order=hot");
+  expect(
     threadHref({ id: "abc", board: "lounge", order: "hot", page: 2 }),
-    "/t/abc?board=lounge&order=hot&page=2",
-  );
+  ).toBe("/t/abc?board=lounge&order=hot&page=2");
 });
 
 test("newThreadHref keeps the current board", () => {
-  assert.equal(newThreadHref(null, "latest"), "/new");
-  assert.equal(newThreadHref("crypto", "hot"), "/new?board=crypto&order=hot");
+  expect(newThreadHref(null, "latest")).toBe("/new");
+  expect(newThreadHref("crypto", "hot")).toBe("/new?board=crypto&order=hot");
 });
 
 test("parseSources treats missing and blank as empty", () => {
-  assert.deepEqual(parseSources(undefined), []);
-  assert.deepEqual(parseSources(null), []);
-  assert.deepEqual(parseSources(""), []);
-  assert.deepEqual(parseSources([]), []);
-  assert.deepEqual(parseSources([{ url: "  ", title: "x" }]), []);
+  expect(parseSources(undefined)).toEqual([]);
+  expect(parseSources(null)).toEqual([]);
+  expect(parseSources("")).toEqual([]);
+  expect(parseSources([])).toEqual([]);
+  expect(parseSources([{ url: "  ", title: "x" }])).toEqual([]);
 });
 
 test("parseSources keeps http(s) and hostname-ready titles", () => {
-  assert.deepEqual(
+  expect(
     parseSources([
       { url: "https://sec.gov/a", title: "  10-K  " },
       { url: "http://example.com/b" },
       { url: "javascript:alert(1)", title: "nope" },
       { url: "ftp://files.example/c" },
     ]),
-    [
-      { url: "https://sec.gov/a", title: "10-K" },
-      { url: "http://example.com/b" },
-    ],
-  );
+  ).toEqual([
+    { url: "https://sec.gov/a", title: "10-K" },
+    { url: "http://example.com/b" },
+  ]);
 });
 
 test("parseSources caps at eight and skips junk", () => {
   const rows = Array.from({ length: 10 }, (_, i) => ({
     url: `https://example.com/${i}`,
   }));
-  assert.equal(parseSources(rows).length, 8);
-  assert.deepEqual(parseSources("not-json"), []);
-  assert.deepEqual(parseSources({ url: "https://example.com" }), []);
+  expect(parseSources(rows)).toHaveLength(8);
+  expect(parseSources("not-json")).toEqual([]);
+  expect(parseSources({ url: "https://example.com" })).toEqual([]);
 });
 
 test("sourceLabel falls back to hostname", () => {
-  assert.equal(
+  expect(
     sourceLabel({ url: "https://www.sec.gov/ix?doc=/a.htm", title: "Item 1A" }),
-    "Item 1A",
+  ).toBe("Item 1A");
+  expect(sourceLabel({ url: "https://www.sec.gov/ix?doc=/a.htm" })).toBe(
+    "sec.gov",
   );
-  assert.equal(sourceLabel({ url: "https://www.sec.gov/ix?doc=/a.htm" }), "sec.gov");
 });
 
 test("sourcesFromForm pairs url and title arrays", () => {
@@ -130,7 +125,7 @@ test("sourcesFromForm pairs url and title arrays", () => {
   form.append("sourceTitle[]", "ignored");
   form.append("sourceUrl[]", "https://example.com/b");
   form.append("sourceTitle[]", "");
-  assert.deepEqual(sourcesFromForm(form), [
+  expect(sourcesFromForm(form)).toEqual([
     { url: "https://example.com/a", title: "A" },
     { url: "https://example.com/b" },
   ]);

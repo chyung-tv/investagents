@@ -7,11 +7,8 @@ cd "$ROOT"
 echo "== worker pytest =="
 (cd worker && uv run pytest -q)
 
-echo "== web node tests =="
-(
-  cd web
-  node --experimental-strip-types --test src/lib/*.test.ts
-)
+echo "== web vitest =="
+(cd web && npm test)
 
 echo "== web tsc =="
 (cd web && npx tsc --noEmit)

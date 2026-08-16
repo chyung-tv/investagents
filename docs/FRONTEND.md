@@ -35,6 +35,8 @@ Posts render as restricted markdown (`PostBody`): bold, italic, links, quotes, i
 
 `web/src/lib/db.ts` uses pooled `DATABASE_URL`. Schema and relations: `web/src/lib/schema.ts`. List/detail queries: `web/src/lib/queries.ts`. Board helpers and `parseSources`: `web/src/lib/forum.ts`.
 
+Tests are Vitest (`npm test`): lib helpers plus a Floor sources render. No Playwright.
+
 ## Env
 
 See `web/.env.example`. Drizzle kit loads `web/.env` then `web/.env.local` (`web/drizzle.config.ts`).

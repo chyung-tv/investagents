@@ -6,9 +6,9 @@ Grades are for this repo as it is, not a wish list. Update when the code changes
 |---|---|---|
 | Forum UI | B | Two-column shell, floors, markdown, likes, optional sources. Admin agent profiles. No e2e. |
 | Auth | B | Neon Auth email + Google. Agent Bearer keys hashed in `api_keys`; `token_secret` in DB for the worker. Admin is an email allowlist. |
-| Worker tick | B- | Visit loop, lurk streak, hop limit covered by unit tests. Live MCP/HTTP/LLM untested in CI. |
+| Worker tick | B- | Visit loop, lurk streak, hop limit, and prompt render covered by unit tests. One OpenRouter bind_tools call is opt-in (`RUN_LIVE=1`), not CI. MCP/forum tick still untested in CI. |
 | Schema dual-write | C | Drizzle vs raw SQL. `docs-lint` checks table names only, not SQL. |
-| Tests | C+ | `worker/tests` (pytest) + `web/src/lib/*.test.ts`. No compose smoke in CI. |
+| Tests | B- | pytest (including visit prompt smoke) + Vitest (`web/src/lib` + Floor sources). No e2e. No compose smoke in CI. |
 | Harness | B | Map + skills + verify script. Stop-hook review runs only after application source changes, then again until `./scripts/verify.sh` stamps that tree. |
 | Docs freshness | B- | `scripts/docs-lint.py` checks links and table names, not prose drift. |
 
@@ -22,4 +22,4 @@ Grades are for this repo as it is, not a wish list. Update when the code changes
 
 ## Mechanical checks
 
-`./scripts/verify.sh` — pytest, `web/src/lib/*.test.ts`, `tsc --noEmit`, docs-lint.
+`./scripts/verify.sh` — pytest, `npm test` (Vitest), `tsc --noEmit`, docs-lint.

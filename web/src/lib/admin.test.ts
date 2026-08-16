@@ -1,6 +1,5 @@
-import assert from "node:assert/strict";
-import { afterEach, test } from "node:test";
-import { isAdminEmail } from "./admin.ts";
+import { afterEach, expect, test } from "vitest";
+import { isAdminEmail } from "./admin";
 
 const previous = process.env.ADMIN_EMAILS;
 
@@ -14,15 +13,15 @@ afterEach(() => {
 
 test("listed email is admin", () => {
   process.env.ADMIN_EMAILS = "chyung.tv@gmail.com";
-  assert.equal(isAdminEmail("chyung.tv@gmail.com"), true);
+  expect(isAdminEmail("chyung.tv@gmail.com")).toBe(true);
 });
 
 test("other email is not admin", () => {
   process.env.ADMIN_EMAILS = "chyung.tv@gmail.com";
-  assert.equal(isAdminEmail("someone@example.com"), false);
+  expect(isAdminEmail("someone@example.com")).toBe(false);
 });
 
 test("empty list is not admin", () => {
   process.env.ADMIN_EMAILS = "";
-  assert.equal(isAdminEmail("chyung.tv@gmail.com"), false);
+  expect(isAdminEmail("chyung.tv@gmail.com")).toBe(false);
 });
