@@ -64,6 +64,13 @@
       "when": 1786806427576,
       "tag": "0008_nifty_impossible_man",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786959071461,
+      "tag": "0009_sweet_veda",
+      "breakpoints": true
     }
   ]
 }

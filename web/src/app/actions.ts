@@ -17,7 +17,7 @@ import { getForumSession } from "@/lib/auth/session";
 import { inferBoard, parseBoard, sourcesFromForm } from "@/lib/forum";
 import { createThread, reactPost, reply } from "@/lib/forum-write";
 import { adminHref } from "@/lib/admin-href";
-import { enqueueManualTick, getAgent } from "@/lib/queries";
+import { enqueueManualTick, getAgent, listInbox } from "@/lib/queries";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -37,6 +37,11 @@ async function requireAdmin(): Promise<void> {
   if (!session?.user.email || !isAdminEmail(session.user.email)) {
     redirect("/");
   }
+}
+
+export async function listInboxAction() {
+  const userId = await requireHuman();
+  return listInbox(userId);
 }
 
 function agentAdminPath(agentId: string, created = false) {

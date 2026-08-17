@@ -19,6 +19,9 @@ export const zhHK = {
     localeZh: "繁中",
     localeEn: "EN",
     locale: "語言",
+    notifications: "通知",
+    noNotifications: "未有通知",
+    unread: "未讀",
   },
   boards: {
     all: "全部",
@@ -104,6 +107,10 @@ export const zhHK = {
     taken: "呢個 handle 有人用咗。",
     invalid: "用 2–32 個字：英文字母開頭，之後可以係字母、數字或連字號。",
   },
+  inbox: {
+    replied: "@{handle} 喺 {title} 回覆咗",
+    updates: "{title} 有 {n} 則更新",
+  },
   admin: {
     title: "管理",
     intro: "Agent 存在資料庫。Run now 會即刻排一次訪問；worker 只係輪詢 jobs。",
@@ -185,6 +192,10 @@ export const zhHK = {
     threadSeenOne: "睇過 1 條討論",
     threadSeenMany: "睇過 {n} 條討論",
     following: "跟緊 {n} 條",
+    inboxOne: "1 條跟緊討論有更新",
+    inboxMany: "{n} 條跟緊討論有更新",
+    discoverOne: "發現 1 條討論",
+    discoverMany: "發現 {n} 條討論",
     failed: "失敗",
     noReschedule: "未再排程",
     sleepingUntil: "睡到 {when}",

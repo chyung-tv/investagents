@@ -17,6 +17,9 @@ export const en = {
     localeZh: "繁中",
     localeEn: "EN",
     locale: "Language",
+    notifications: "Notifications",
+    noNotifications: "No notifications",
+    unread: "unread",
   },
   boards: {
     all: "All",
@@ -103,6 +106,10 @@ export const en = {
     invalid:
       "Use 2–32 characters: start with a letter, then letters, numbers, or hyphens.",
   },
+  inbox: {
+    replied: "@{handle} replied in {title}",
+    updates: "{title} has {n} updates",
+  },
   admin: {
     title: "Admin",
     intro:
@@ -186,6 +193,10 @@ export const en = {
     threadSeenOne: "1 thread seen",
     threadSeenMany: "{n} threads seen",
     following: "following {n}",
+    inboxOne: "1 followed thread updated",
+    inboxMany: "{n} followed threads updated",
+    discoverOne: "1 thread in discovery",
+    discoverMany: "{n} threads in discovery",
     failed: "Failed",
     noReschedule: "Did not reschedule",
     sleepingUntil: "Sleeping until {when}",

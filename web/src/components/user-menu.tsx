@@ -1,10 +1,14 @@
 "use client";
 
+import { listInboxAction } from "@/app/actions";
 import { signOutAction } from "@/app/login/actions";
 import { useDict } from "@/i18n/locale-provider";
 import { publicAlias } from "@/lib/agent-id";
+import { formatInboxLabel, type InboxItem } from "@/lib/inbox";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+const POLL_MS = 15_000;
 
 export function UserMenu({
   handle,
@@ -19,12 +23,30 @@ export function UserMenu({
 }) {
   const { dict } = useDict();
   const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<InboxItem[]>([]);
   const rootRef = useRef<HTMLDivElement>(null);
   const label = publicAlias(handle, name, dict.nav.you);
   const initial = (handle?.[0] ?? name?.[0] ?? "?").toUpperCase();
+  const unread = items.length > 0;
+  const buttonLabel = unread ? `${label}, ${dict.nav.unread}` : label;
+
+  const refresh = useCallback(() => {
+    void listInboxAction()
+      .then(setItems)
+      .catch(() => {
+        setItems([]);
+      });
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    const id = setInterval(refresh, POLL_MS);
+    return () => clearInterval(id);
+  }, [refresh]);
 
   useEffect(() => {
     if (!open) return;
+    refresh();
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") setOpen(false);
     }
@@ -37,7 +59,7 @@ export function UserMenu({
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onPointer);
     };
-  }, [open]);
+  }, [open, refresh]);
 
   return (
     <div ref={rootRef} className="relative">
@@ -45,28 +67,36 @@ export function UserMenu({
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label={label}
+        aria-label={buttonLabel}
         onClick={() => setOpen((value) => !value)}
-        className="flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-zinc-700 text-sm font-semibold text-zinc-100 transition-colors duration-200 hover:bg-zinc-600 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+        className="relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-zinc-700 text-sm font-semibold text-zinc-100 transition-colors duration-200 hover:bg-zinc-600 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
       >
-        {image ? (
-          // Native img: OAuth avatar hosts are not in next.config remotePatterns.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={image}
-            alt=""
-            width={32}
-            height={32}
-            className="h-8 w-8 rounded-full object-cover"
+        <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full">
+          {image ? (
+            // Native img: OAuth avatar hosts are not in next.config remotePatterns.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={image}
+              alt=""
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-full object-cover"
+            />
+          ) : (
+            initial
+          )}
+        </span>
+        {unread ? (
+          <span
+            aria-hidden
+            className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500 ring-2 ring-card"
           />
-        ) : (
-          initial
-        )}
+        ) : null}
       </button>
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-30 mt-1 min-w-44 rounded-md border border-border bg-card py-1 shadow-lg"
+          className="absolute right-0 z-30 mt-1 w-72 max-w-[min(18rem,calc(100vw-1.5rem))] rounded-md border border-border bg-card py-1 shadow-lg"
         >
           <Link
             href="/profile"
@@ -76,6 +106,35 @@ export function UserMenu({
           >
             {label}
           </Link>
+          <p className="px-3 pt-2 pb-1 text-xs text-muted">
+            {dict.nav.notifications}
+          </p>
+          <div className="max-h-56 overflow-y-auto">
+            {items.length === 0 ? (
+              <p className="px-3 py-1.5 text-sm text-muted">
+                {dict.nav.noNotifications}
+              </p>
+            ) : (
+              items.map((item) => (
+                <Link
+                  key={item.threadId}
+                  href={`/t/${item.threadId}`}
+                  role="menuitem"
+                  onClick={() => {
+                    setItems((current) =>
+                      current.filter((row) => row.threadId !== item.threadId),
+                    );
+                    setOpen(false);
+                  }}
+                  className="block cursor-pointer px-3 py-1.5 text-sm text-foreground transition-colors duration-200 hover:bg-background hover:text-accent"
+                >
+                  <span className="line-clamp-2">
+                    {formatInboxLabel(item, dict)}
+                  </span>
+                </Link>
+              ))
+            )}
+          </div>
           {admin ? (
             <Link
               href="/admin"

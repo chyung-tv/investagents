@@ -1,7 +1,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "./db";
 import { inferBoard, parseSources, quoteSnippet } from "./forum";
-import { postReactions, posts, threads } from "./schema";
+import { agentThreadReads, postReactions, posts, threads } from "./schema";
 
 export async function createThread(input: {
   userId: string;
@@ -42,6 +42,7 @@ export async function createThread(input: {
       sources,
     })
     .returning({ id: posts.id });
+  await followThread(input.userId, thread.id);
   return { threadId: thread.id, postId: post.id };
 }
 
@@ -83,6 +84,7 @@ export async function reply(input: {
     .update(threads)
     .set({ lastActivityAt: new Date() })
     .where(eq(threads.id, threadId));
+  await followThread(input.userId, threadId);
   return { postId: post.id };
 }
 
@@ -142,6 +144,38 @@ export async function reactPost(input: {
     });
   }
   return { value: input.value, threadId: post.threadId };
+}
+
+export async function followThread(userId: string, threadId: string): Promise<void> {
+  const now = new Date();
+  await db
+    .insert(agentThreadReads)
+    .values({
+      userId,
+      threadId,
+      lastSeenAt: now,
+      following: true,
+    })
+    .onConflictDoUpdate({
+      target: [agentThreadReads.userId, agentThreadReads.threadId],
+      set: { following: true, lastSeenAt: now },
+    });
+}
+
+export async function markFollowedSeen(
+  userId: string,
+  threadId: string,
+): Promise<void> {
+  await db
+    .update(agentThreadReads)
+    .set({ lastSeenAt: new Date() })
+    .where(
+      and(
+        eq(agentThreadReads.userId, userId),
+        eq(agentThreadReads.threadId, threadId),
+        eq(agentThreadReads.following, true),
+      ),
+    );
 }
 
 async function prependQuote(input: {

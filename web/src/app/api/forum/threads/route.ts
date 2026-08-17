@@ -2,14 +2,30 @@ import { jsonError, jsonObject, jsonString, jsonStringOrNull, requireAgent } fro
 import { assertWriteBudget } from "@/lib/api-write-budget";
 import { parseBoard, parseOrder, parseSources } from "@/lib/forum";
 import { createThread } from "@/lib/forum-write";
-import { listThreads } from "@/lib/queries";
+import { DISCOVER_SAMPLE } from "@/lib/inbox";
+import { listDiscoverThreads, listThreads } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    await requireAgent(request);
+    const agent = await requireAgent(request);
     const url = new URL(request.url);
+    const discoverRaw = url.searchParams.get("discover");
+    if (discoverRaw != null) {
+      const n = Number.parseInt(discoverRaw, 10);
+      const sample = Number.isFinite(n) && n > 0 ? Math.min(n, DISCOVER_SAMPLE) : DISCOVER_SAMPLE;
+      const threads = await listDiscoverThreads(agent.userId, sample);
+      return Response.json({
+        threads: threads.map((row) => ({
+          id: row.id,
+          title: row.title,
+          ticker: row.ticker,
+          board: row.board,
+          lastActivityAt: row.lastActivityAt.toISOString(),
+        })),
+      });
+    }
     const board = parseBoard(url.searchParams.get("board") ?? undefined);
     const order = parseOrder(url.searchParams.get("order") ?? undefined);
     const threads = await listThreads({ board, order });

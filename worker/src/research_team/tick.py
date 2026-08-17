@@ -119,7 +119,42 @@ def fail_open_tick(job: dict[str, Any], error: str) -> None:
     )
 
 
-def visit_briefing(*, memory: str, news: str, lurk_streak: int) -> str:
+def _format_inbox(items: list[dict[str, Any]]) -> str:
+    if not items:
+        return "(none)"
+    lines: list[str] = []
+    for item in items:
+        tid = str(item.get("threadId") or "")
+        title = str(item.get("title") or "")[:80]
+        n = item.get("unreadCount") or 0
+        handle = str(item.get("latestHandle") or "anon")
+        snippet = str(item.get("latestBodySnippet") or "").replace("\n", " ")[:80]
+        lines.append(f"- {tid} {title} · {n} new · @{handle}: {snippet}")
+    return "\n".join(lines)
+
+
+def _format_discover(items: list[dict[str, Any]]) -> str:
+    if not items:
+        return "(none)"
+    lines: list[str] = []
+    for item in items:
+        tid = str(item.get("id") or "")
+        title = str(item.get("title") or "")[:80]
+        board = str(item.get("board") or "")
+        ticker = str(item.get("ticker") or "")
+        extra = board if not ticker else f"{board} {ticker}"
+        lines.append(f"- {tid} [{extra}] {title}")
+    return "\n".join(lines)
+
+
+def visit_briefing(
+    *,
+    memory: str,
+    news: str,
+    lurk_streak: int,
+    inbox: str = "",
+    discover: str = "",
+) -> str:
     lurk = (
         "You already lurked twice. You must post this visit."
         if lurk_streak >= 2
@@ -127,7 +162,9 @@ def visit_briefing(*, memory: str, news: str, lurk_streak: int) -> str:
     )
     return (
         f"PRIVATE NOTES (do not paste into a post):\n{memory or '(empty)'}\n\n"
+        f"FOLLOWING UPDATES:\n{inbox or '(none)'}\n\n"
         f"MARKET NEWS:\n{news or '(none)'}\n\n"
+        f"DISCOVERY:\n{discover or '(none)'}\n\n"
         f"{lurk}\n"
         "Write the notebook and any public posts in Hong Kong Cantonese (口語粵語).\n"
         f"{DISCLAIMER}"
@@ -172,8 +209,22 @@ async def run_tick(job: dict[str, Any]) -> None:
             "claimed",
             {"agentId": agent_id, "source": job_source(payload)},
         )
+        inbox_items = await forum.inbox()
+        inbox_ids = [
+            str(item.get("threadId"))
+            for item in inbox_items
+            if isinstance(item.get("threadId"), str) and item.get("threadId")
+        ]
+        _emit(job["id"], "inbox", {"n": len(inbox_items), "ids": inbox_ids})
         news = await _await_step("news", fetch_market_news(), timeout=MCP_TIMEOUT_S)
         _emit(job["id"], "news", {"chars": len(news), "text": _clip(news)})
+        discover_items = await forum.discover()
+        discover_ids = [
+            str(item.get("id"))
+            for item in discover_items
+            if isinstance(item.get("id"), str) and item.get("id")
+        ]
+        _emit(job["id"], "discover", {"n": len(discover_items), "ids": discover_ids})
         streak = lurk_count(db.lurk_results(agent_id))
         _emit(job["id"], "visit", {"status": "started", "lurkStreak": streak})
         research = await _await_step("tools", forum_tools(), timeout=MCP_TIMEOUT_S)
@@ -199,6 +250,8 @@ async def run_tick(job: dict[str, Any]) -> None:
                     memory=agent.get("memory") or "",
                     news=news,
                     lurk_streak=streak,
+                    inbox=_format_inbox(inbox_items),
+                    discover=_format_discover(discover_items),
                 ),
                 tools=tools,
                 on_pin=on_pin,

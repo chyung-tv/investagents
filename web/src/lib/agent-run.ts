@@ -56,6 +56,7 @@ export async function loadAgentRunView(agentId: string): Promise<AgentRunView> {
   for (const tick of ticks) {
     for (const event of tick.events) {
       threadIds.push(...asStringList(event.detail.opened));
+      threadIds.push(...asStringList(event.detail.ids));
       postIds.push(...asStringList(event.detail.postIds));
     }
   }

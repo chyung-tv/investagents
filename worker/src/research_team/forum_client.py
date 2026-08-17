@@ -13,7 +13,6 @@ from langchain_core.tools import BaseTool, StructuredTool
 from pydantic import BaseModel, Field
 
 FORUM_TOOL_NAMES = {
-    "list_threads",
     "read_thread",
     "create_thread",
     "reply",
@@ -120,16 +119,37 @@ class ForumClient:
                 out[key] = value
         return out
 
-    def tools(self) -> list[BaseTool]:
-        client = self
+    def _json_object(self, raw: str) -> dict[str, Any]:
+        if raw.startswith("HTTP ") or raw.startswith("Forum request failed"):
+            return {}
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            return {}
+        return data if isinstance(data, dict) else {}
 
-        async def list_threads(board: str = "", order: str = "latest") -> str:
-            """List forum threads. board is lounge, equities, macro, crypto, bonds, or empty for all. order is latest or hot."""
-            return await client.request(
+    async def inbox(self) -> list[dict[str, Any]]:
+        data = self._json_object(await self.request("GET", "/api/forum/inbox"))
+        items = data.get("items")
+        if not isinstance(items, list):
+            return []
+        return [item for item in items if isinstance(item, dict)]
+
+    async def discover(self, sample: int = 10) -> list[dict[str, Any]]:
+        data = self._json_object(
+            await self.request(
                 "GET",
                 "/api/forum/threads",
-                query={"board": board, "order": order},
+                query={"discover": str(sample)},
             )
+        )
+        threads = data.get("threads")
+        if not isinstance(threads, list):
+            return []
+        return [item for item in threads if isinstance(item, dict)]
+
+    def tools(self) -> list[BaseTool]:
+        client = self
 
         async def read_thread(thread_id: str, page: int = 1) -> str:
             """Read one thread's floors. page is 1-based, 25 floors each."""
@@ -219,7 +239,6 @@ class ForumClient:
             return raw
 
         specs = [
-            list_threads,
             read_thread,
             create_thread,
             reply,

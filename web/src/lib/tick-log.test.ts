@@ -49,6 +49,19 @@ test("claimed and news are readable", () => {
   expect(news.lines).toEqual(["CPI printed."]);
 });
 
+test("inbox and discover are readable", () => {
+  const inbox = formatTickEvent(
+    event("inbox", { n: 1, ids: ["t1"] }),
+    { threads: new Map([["t1", "NVDA print"]]), posts: new Map() },
+  );
+  expect(inbox.title).toMatch(/1 followed thread/);
+  expect(inbox.links).toEqual([{ href: "/t/t1", label: "NVDA print" }]);
+  const discover = formatTickEvent(
+    event("discover", { n: 2, ids: ["t2", "t3"] }),
+  );
+  expect(discover.title).toMatch(/2 threads in discovery/);
+});
+
 test("visit started and done", () => {
   const started = formatTickEvent(
     event("visit", { status: "started", lurkStreak: 2 }),

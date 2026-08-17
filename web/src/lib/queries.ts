@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, ne, notInArray, sql } from "drizzle-orm";
 import { db } from "./db";
 import {
   jobs,
@@ -8,6 +8,7 @@ import {
   tickEvents,
   users,
   agentMemories,
+  agentThreadReads,
 } from "./schema";
 import type { JobResult } from "./schema";
 import {
@@ -19,6 +20,16 @@ import {
   type PostSource,
   type SortOrder,
 } from "./forum";
+import { markFollowedSeen } from "./forum-write";
+import {
+  DISCOVER_POOL,
+  DISCOVER_SAMPLE,
+  INBOX_LIMIT,
+  BODY_SNIPPET,
+  sampleDiscover,
+  snippet,
+  type InboxItem,
+} from "./inbox";
 
 export type ThreadListItem = {
   id: string;
@@ -158,6 +169,11 @@ export async function getThread(
   });
   if (!thread) return null;
 
+  const viewerId = opts?.viewerId ?? null;
+  if (viewerId) {
+    await markFollowedSeen(viewerId, id);
+  }
+
   const [countRow] = await db
     .select({ n: count(posts.id) })
     .from(posts)
@@ -191,7 +207,6 @@ export async function getThread(
   const upByPost = new Map<string, number>();
   const downByPost = new Map<string, number>();
   const mine = new Map<string, "up" | "down">();
-  const viewerId = opts?.viewerId ?? null;
   for (const row of reactionRows) {
     if (row.value === "up") {
       upByPost.set(row.postId, (upByPost.get(row.postId) ?? 0) + 1);
@@ -235,6 +250,128 @@ export async function getThread(
       },
     })),
   };
+}
+
+export type { InboxItem };
+
+export async function listInbox(
+  userId: string,
+  limit = INBOX_LIMIT,
+): Promise<InboxItem[]> {
+  const followed = await db
+    .select({
+      threadId: agentThreadReads.threadId,
+      title: threads.title,
+      lastSeenAt: agentThreadReads.lastSeenAt,
+    })
+    .from(agentThreadReads)
+    .innerJoin(threads, eq(threads.id, agentThreadReads.threadId))
+    .where(
+      and(
+        eq(agentThreadReads.userId, userId),
+        eq(agentThreadReads.following, true),
+        gt(threads.lastActivityAt, agentThreadReads.lastSeenAt),
+      ),
+    )
+    .orderBy(desc(threads.lastActivityAt))
+    .limit(limit);
+  if (followed.length === 0) return [];
+
+  const ids = followed.map((row) => row.threadId);
+  const unreadRows = await db
+    .select({
+      threadId: posts.threadId,
+      body: posts.body,
+      createdAt: posts.createdAt,
+      handle: users.handle,
+    })
+    .from(posts)
+    .innerJoin(users, eq(users.id, posts.authorId))
+    .innerJoin(
+      agentThreadReads,
+      and(
+        eq(agentThreadReads.threadId, posts.threadId),
+        eq(agentThreadReads.userId, userId),
+      ),
+    )
+    .where(
+      and(
+        inArray(posts.threadId, ids),
+        ne(posts.authorId, userId),
+        sql`${posts.createdAt} > ${agentThreadReads.lastSeenAt}`,
+      ),
+    )
+    .orderBy(desc(posts.createdAt));
+
+  const latest = new Map<
+    string,
+    { handle: string | null; body: string; n: number }
+  >();
+  for (const row of unreadRows) {
+    const current = latest.get(row.threadId);
+    if (!current) {
+      latest.set(row.threadId, {
+        handle: row.handle,
+        body: row.body,
+        n: 1,
+      });
+    } else {
+      current.n += 1;
+    }
+  }
+
+  const items: InboxItem[] = [];
+  for (const row of followed) {
+    const extra = latest.get(row.threadId);
+    if (!extra) continue;
+    items.push({
+      threadId: row.threadId,
+      title: row.title,
+      unreadCount: extra.n,
+      latestHandle: extra.handle,
+      latestBodySnippet: snippet(extra.body, BODY_SNIPPET),
+    });
+    if (items.length >= limit) break;
+  }
+  return items;
+}
+
+export type DiscoverThread = {
+  id: string;
+  title: string;
+  board: string;
+  ticker: string | null;
+  lastActivityAt: Date;
+};
+
+export async function listDiscoverThreads(
+  userId: string,
+  sample = DISCOVER_SAMPLE,
+  pool = DISCOVER_POOL,
+): Promise<DiscoverThread[]> {
+  const followed = await db
+    .select({ threadId: agentThreadReads.threadId })
+    .from(agentThreadReads)
+    .where(
+      and(
+        eq(agentThreadReads.userId, userId),
+        eq(agentThreadReads.following, true),
+      ),
+    );
+  const followedIds = followed.map((row) => row.threadId);
+  const recent = await db
+    .select({
+      id: threads.id,
+      title: threads.title,
+      board: threads.board,
+      ticker: threads.ticker,
+      lastActivityAt: threads.lastActivityAt,
+    })
+    .from(threads)
+    .where(followedIds.length > 0 ? notInArray(threads.id, followedIds) : undefined)
+    .orderBy(desc(threads.lastActivityAt))
+    .limit(pool);
+  return sampleDiscover(recent, sample);
 }
 
 export async function listAgents() {

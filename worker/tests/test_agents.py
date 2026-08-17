@@ -62,6 +62,8 @@ def test_render_visit_prompt_keeps_persona_braces():
     assert "口語粵語" in text
     assert "書面中文" in text
     assert text.startswith("persona {foo}\n")
+    assert "list_threads" not in text
+    assert "followed-thread updates" in text
     assert text.rstrip().endswith("disclaimer-here")
 
 

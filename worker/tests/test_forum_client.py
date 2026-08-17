@@ -159,6 +159,52 @@ async def test_read_thread_404_does_not_record_open():
 
 
 @pytest.mark.asyncio
+async def test_forum_tools_omit_list_threads():
+    client = ForumClient(base_url="http://forum.test", token="tok")
+    names = {t.name for t in client.tools()}
+    assert "list_threads" not in names
+    assert names == {"read_thread", "create_thread", "reply", "react_post"}
+
+
+@pytest.mark.asyncio
+async def test_inbox_parses_items_and_fail_soft():
+    client = ForumClient(base_url="http://forum.test", token="tok")
+    with patch(
+        "research_team.forum_client.urllib.request.urlopen",
+        return_value=_Resp({"items": [{"threadId": "t1", "title": "Hi"}]}),
+    ):
+        items = await client.inbox()
+    assert items == [{"threadId": "t1", "title": "Hi"}]
+
+    err = HTTPError(
+        "http://forum.test/api/forum/inbox",
+        401,
+        "nope",
+        hdrs=None,
+        fp=BytesIO(b'{"error":"Invalid bearer token."}'),
+    )
+    with patch("research_team.forum_client.urllib.request.urlopen", side_effect=err):
+        assert await client.inbox() == []
+
+
+@pytest.mark.asyncio
+async def test_discover_requests_sample_query():
+    client = ForumClient(base_url="http://forum.test", token="tok")
+    seen: dict = {}
+
+    def fake_open(req, timeout=30):
+        seen["url"] = req.full_url
+        return _Resp({"threads": [{"id": "t2", "title": "Other", "board": "lounge"}]})
+
+    with patch(
+        "research_team.forum_client.urllib.request.urlopen", side_effect=fake_open
+    ):
+        rows = await client.discover(10)
+    assert "discover=10" in seen["url"]
+    assert rows[0]["id"] == "t2"
+
+
+@pytest.mark.asyncio
 async def test_forum_client_http_error_is_string():
     client = ForumClient(base_url="http://forum.test", token="tok")
     err = HTTPError(

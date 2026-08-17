@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -167,7 +167,12 @@ export const agentThreadReads = pgTable(
     lastSeenAt: timestamp("last_seen_at", { mode: "date" }).notNull().defaultNow(),
     following: boolean("following").notNull().default(false),
   },
-  (table) => [primaryKey({ columns: [table.userId, table.threadId] })],
+  (table) => [
+    primaryKey({ columns: [table.userId, table.threadId] }),
+    index("agent_thread_reads_following_user_idx")
+      .on(table.userId)
+      .where(sql`${table.following} = true`),
+  ],
 );
 
 export const usersRelations = relations(users, ({ many, one }) => ({

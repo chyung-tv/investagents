@@ -16,6 +16,8 @@ test("dictionaries share keys", () => {
   expect(en.nav.signIn).toBe("Sign in");
   expect(zh.boards.lounge).toBe("吹水");
   expect(zh.boards.bonds).toBe("債券");
+  expect(zh.inbox.replied).toContain("{handle}");
+  expect(en.nav.notifications).toBe("Notifications");
 });
 
 test("fill substitutes placeholders", () => {

@@ -11,9 +11,15 @@ def test_visit_briefing_includes_memory_and_streak():
         memory="I still like COST.",
         news="CPI printed.",
         lurk_streak=2,
+        inbox="- t1 NVDA · 1 new · @alice: yo",
+        discover="- t2 [lounge] Housing",
     )
     assert "I still like COST." in text
     assert "CPI printed." in text
+    assert "FOLLOWING UPDATES:" in text
+    assert "@alice" in text
+    assert "DISCOVERY:" in text
+    assert "Housing" in text
     assert "must post" in text
     assert "口語粵語" in text
 
@@ -21,6 +27,8 @@ def test_visit_briefing_includes_memory_and_streak():
 def test_visit_briefing_counts_lurks():
     text = visit_briefing(memory="", news="", lurk_streak=0)
     assert "Silent visits in a row: 0." in text
+    assert "FOLLOWING UPDATES:\n(none)" in text
+    assert "DISCOVERY:\n(none)" in text
 
 
 @pytest.mark.asyncio
@@ -41,6 +49,21 @@ def _agent() -> dict:
         "disabled_at": None,
         "memory": "",
     }
+
+
+def _forum(**overrides: object) -> MagicMock:
+    forum = MagicMock()
+    forum.opened = []
+    forum.post_ids = []
+    forum.written = []
+    forum.notes = []
+    forum.reaction_count = 0
+    forum.tools.return_value = []
+    forum.inbox = AsyncMock(return_value=[])
+    forum.discover = AsyncMock(return_value=[])
+    for key, value in overrides.items():
+        setattr(forum, key, value)
+    return forum
 
 
 def _tick_db(**overrides: object) -> dict:
@@ -73,6 +96,7 @@ async def test_run_tick_retries_timeout_without_write():
             "research_team.tick.require_env",
             return_value={"FORUM_URL": "http://forum.test"},
         ),
+        patch("research_team.tick.ForumClient", return_value=_forum()),
         patch(
             "research_team.tick.fetch_market_news",
             AsyncMock(return_value="news"),
@@ -88,6 +112,8 @@ async def test_run_tick_retries_timeout_without_write():
     assert db["retry_job"].call_args.kwargs["next_attempt"] == 2
     db["complete_job"].assert_not_called()
     db["reschedule_agent"].assert_not_called()
+    steps = [call.args[1] for call in db["insert_tick_event"].call_args_list]
+    assert steps.index("inbox") < steps.index("news") < steps.index("discover")
 
 
 @pytest.mark.asyncio
@@ -97,13 +123,13 @@ async def test_run_tick_completes_timeout_after_reply():
         "payload": {"agentId": "agent-1", "source": "manual"},
     }
     db = _tick_db()
-    forum = MagicMock()
-    forum.opened = ["t1"]
-    forum.post_ids = ["p1"]
-    forum.written = ["t1"]
-    forum.notes = ["replied t1"]
-    forum.reaction_count = 0
-    forum.tools.return_value = []
+    forum = _forum(
+        opened=["t1"],
+        post_ids=["p1"],
+        written=["t1"],
+        notes=["replied t1"],
+        reaction_count=0,
+    )
     with (
         patch.multiple("research_team.tick.db", **db),
         patch(
@@ -140,6 +166,7 @@ async def test_run_tick_completes_timeout_on_third_attempt():
             "research_team.tick.require_env",
             return_value={"FORUM_URL": "http://forum.test"},
         ),
+        patch("research_team.tick.ForumClient", return_value=_forum()),
         patch(
             "research_team.tick.fetch_market_news",
             AsyncMock(return_value="news"),
