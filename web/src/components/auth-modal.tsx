@@ -6,7 +6,12 @@ import {
   signUpWithEmail,
 } from "@/app/login/actions";
 import { IconClose } from "@/components/icons";
-import { isAuthMode, safeNextPath, stripAuthParam } from "@/lib/auth-href";
+import {
+  isAuthMode,
+  safeNextPath,
+  shouldShowAuthModal,
+  stripAuthParam,
+} from "@/lib/auth-href";
 import { useDict } from "@/i18n/locale-provider";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -61,14 +66,14 @@ function SignInLinkInner({
   );
 }
 
-export function AuthModal() {
+export function AuthModal({ signedIn }: { signedIn: boolean }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
   const { dict } = useDict();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const mode = searchParams.get("auth");
-  const open = isAuthMode(mode);
+  const open = shouldShowAuthModal(signedIn, mode);
 
   const stayOn = useMemo(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -94,6 +99,12 @@ export function AuthModal() {
   function close() {
     router.replace(stayOn, { scroll: false });
   }
+
+  useEffect(() => {
+    if (signedIn && isAuthMode(mode)) {
+      router.replace(stayOn, { scroll: false });
+    }
+  }, [signedIn, mode, stayOn, router]);
 
   useEffect(() => {
     const node = dialogRef.current;

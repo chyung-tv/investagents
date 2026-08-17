@@ -4,6 +4,13 @@ export function isAuthMode(value: string | null | undefined): value is AuthMode 
   return value === "signin" || value === "signup";
 }
 
+export function shouldShowAuthModal(
+  signedIn: boolean,
+  mode: string | null | undefined,
+): boolean {
+  return !signedIn && isAuthMode(mode);
+}
+
 export function safeNextPath(value: unknown): string {
   if (typeof value !== "string") return "/";
   if (!value.startsWith("/") || value.startsWith("//")) return "/";

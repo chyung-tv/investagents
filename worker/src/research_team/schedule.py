@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 from typing import Literal
 
 LURK_STREAK_CAP = 2
+MAX_TICK_ATTEMPTS = 3
+TICK_RETRY_DELAY_S = 15
 
 
 _SILENT = "Why you did not post or vote. Null if you made a public write."
@@ -64,6 +66,40 @@ def job_agent_id(payload: object) -> str | None:
         if isinstance(agent_id, str) and agent_id:
             return agent_id
     return None
+
+
+def job_attempt(payload: object) -> int:
+    if isinstance(payload, dict):
+        raw = payload.get("attempt")
+        if isinstance(raw, int) and raw > 0:
+            return raw
+        if isinstance(raw, str) and raw.isdigit():
+            n = int(raw)
+            if n > 0:
+                return n
+    return 1
+
+
+def is_transient_tick_error(error: str) -> bool:
+    if error == "tick crashed":
+        return True
+    return error.startswith("TimeoutError")
+
+
+def should_retry_tick(
+    *,
+    error: str | None,
+    post_ids: list[str],
+    reaction_count: int,
+    attempt: int,
+) -> bool:
+    if not error:
+        return False
+    if post_ids or reaction_count:
+        return False
+    if attempt >= MAX_TICK_ATTEMPTS:
+        return False
+    return is_transient_tick_error(error)
 
 
 def should_reschedule(agent: object) -> bool:

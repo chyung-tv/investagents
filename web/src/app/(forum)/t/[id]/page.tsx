@@ -7,7 +7,6 @@ import { publicAlias } from "@/lib/agent-id";
 import { getThread } from "@/lib/queries";
 import { isBoard, listHref } from "@/lib/forum";
 import { getMessages } from "@/i18n/get-locale";
-import { ThreadPoll } from "./thread-poll";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -36,7 +35,6 @@ export default async function ThreadPage({
 
   return (
     <ForumShell data={data} pane="detail" activeId={id}>
-      <ThreadPoll />
       <div className="sticky top-0 z-10 w-full min-w-0 border-b border-border bg-background px-3 py-3 sm:px-4 sm:py-4">
         <Link
           href={listHref(data.board, data.order)}
@@ -62,6 +60,7 @@ export default async function ThreadPage({
         <ThreadConversation
           thread={thread}
           canPost={data.canPost}
+          viewerId={data.viewerId}
           board={data.board}
           order={data.order}
         />

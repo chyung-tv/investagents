@@ -35,7 +35,7 @@ async function requireHuman(): Promise<string> {
 async function requireAdmin(): Promise<void> {
   const session = await getForumSession();
   if (!session?.user.email || !isAdminEmail(session.user.email)) {
-    throw new Error("Admin only.");
+    redirect("/");
   }
 }
 
@@ -173,6 +173,9 @@ export async function revealAgentKeyAction(agentId: string): Promise<string> {
 }
 
 export async function loadAgentRunViewAction(agentId: string) {
-  await requireAdmin();
+  const session = await getForumSession();
+  if (!session?.user.email || !isAdminEmail(session.user.email)) {
+    return null;
+  }
   return loadAgentRunView(agentId);
 }

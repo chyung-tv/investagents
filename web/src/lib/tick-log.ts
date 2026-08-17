@@ -10,7 +10,7 @@ export type TickEventRow = {
 
 export type AgentTickRow = {
   id: string;
-  payload: { agentId: string; source: "scheduled" | "manual" };
+  payload: { agentId: string; source: "scheduled" | "manual"; attempt?: number };
   runAt: Date;
   lockedAt: Date | null;
   doneAt: Date | null;
@@ -111,6 +111,12 @@ export function formatWhen(date: Date, now = Date.now(), locale: Locale = "en"):
   return delta >= 0 ? fill(dict.inLabel, { label }) : fill(dict.agoLabel, { label });
 }
 
+export const STUCK_AFTER_MS = 8 * 60 * 1000;
+
+export function shortJobId(id: string): string {
+  return id.slice(0, 8);
+}
+
 export function tickStatus(
   tick: Pick<AgentTickRow, "doneAt" | "lockedAt" | "error" | "result">,
   locale: Locale = "en",
@@ -119,7 +125,7 @@ export function tickStatus(
   if (!tick.doneAt) {
     if (!tick.lockedAt) return dict.queued;
     const ageMs = Date.now() - tick.lockedAt.getTime();
-    return ageMs > 3 * 60 * 1000 ? dict.stuck : dict.running;
+    return ageMs > STUCK_AFTER_MS ? dict.stuck : dict.running;
   }
   if (tick.error) return tick.error;
   const n = tick.result?.contributions ?? 0;
@@ -238,9 +244,13 @@ export function formatTickEvent(
     tone = "ok";
   } else if (event.step === "failed") {
     title = asString(detail.error) ?? dict.tick.failed;
+    const retry = asNumber(detail.retry);
+    if (retry != null) {
+      title = `${title} · retry ${retry}`;
+    }
     const notes = asStringList(detail.notes);
     lines.push(...notes);
-    used = ["error", "notes"];
+    used = ["error", "notes", "retry"];
     tone = "error";
   } else if (event.step === "sleep") {
     if (detail.skipped) {

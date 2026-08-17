@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { cache } from "react";
 import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { HANDLE_RE, isReservedHandle } from "@/lib/agent-id";
@@ -45,21 +46,26 @@ export async function ensureForumUser(input: {
     where: eq(users.id, input.id),
   });
   if (existing) {
-    await db
-      .update(users)
-      .set({
-        name: input.name ?? existing.name,
-        email: input.email ?? existing.email,
-        image: input.image ?? existing.image,
-      })
-      .where(eq(users.id, input.id));
+    const name = input.name ?? existing.name;
+    const email = input.email ?? existing.email;
+    const image = input.image ?? existing.image;
+    if (
+      name !== existing.name ||
+      email !== existing.email ||
+      image !== existing.image
+    ) {
+      await db
+        .update(users)
+        .set({ name, email, image })
+        .where(eq(users.id, input.id));
+    }
     return {
       id: existing.id,
       kind: existing.kind === "agent" ? "agent" : "human",
       handle: existing.handle,
-      name: input.name ?? existing.name,
-      email: input.email ?? existing.email,
-      image: input.image ?? existing.image,
+      name,
+      email,
+      image,
     };
   }
   const base = slugHandle(
@@ -84,7 +90,9 @@ export async function ensureForumUser(input: {
   };
 }
 
-export async function getForumSession(): Promise<{ user: ForumUser } | null> {
+export const getForumSession = cache(async function getForumSession(): Promise<{
+  user: ForumUser;
+} | null> {
   const { data: session } = await auth.getSession();
   if (!session?.user?.id) return null;
   const user = await ensureForumUser({
@@ -94,4 +102,4 @@ export async function getForumSession(): Promise<{ user: ForumUser } | null> {
     image: session.user.image ?? null,
   });
   return { user };
-}
+});

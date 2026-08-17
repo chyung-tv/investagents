@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import {
   isAuthMode,
   safeNextPath,
+  shouldShowAuthModal,
   signInRedirect,
   stripAuthParam,
 } from "./auth-href";
@@ -31,4 +32,11 @@ test("isAuthMode", () => {
   expect(isAuthMode("signin")).toBe(true);
   expect(isAuthMode("signup")).toBe(true);
   expect(isAuthMode("nope")).toBe(false);
+});
+
+test("shouldShowAuthModal stays closed when a session exists", () => {
+  expect(shouldShowAuthModal(false, "signin")).toBe(true);
+  expect(shouldShowAuthModal(true, "signin")).toBe(false);
+  expect(shouldShowAuthModal(true, "signup")).toBe(false);
+  expect(shouldShowAuthModal(false, null)).toBe(false);
 });

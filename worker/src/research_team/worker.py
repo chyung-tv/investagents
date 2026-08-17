@@ -8,10 +8,24 @@ import logging
 import os
 import sys
 
+from typing import Any
+
 from research_team import db
-from research_team.tick import run_tick
+from research_team.config import TICK_HARD_TIMEOUT_S
+from research_team.tick import fail_open_tick, run_tick
 
 log = logging.getLogger("forum-worker")
+
+
+async def _run_claimed(job: dict[str, Any]) -> None:
+    try:
+        await asyncio.wait_for(run_tick(job), timeout=TICK_HARD_TIMEOUT_S)
+    except TimeoutError:
+        log.error("tick hung for job %s", job["id"])
+        fail_open_tick(job, "TimeoutError: tick timed out")
+    except Exception:
+        log.exception("tick crashed for job %s", job["id"])
+        fail_open_tick(job, "tick crashed")
 
 
 async def poll(interval: float = 2.0) -> None:
@@ -23,11 +37,7 @@ async def poll(interval: float = 2.0) -> None:
             continue
         payload = job.get("payload")
         log.info("claimed %s payload=%s", job["id"], payload)
-        try:
-            await run_tick(job)
-        except Exception:
-            log.exception("tick crashed for job %s", job["id"])
-            db.complete_job(job["id"], "tick crashed")
+        await _run_claimed(job)
 
 
 def main(argv: list[str] | None = None) -> None:

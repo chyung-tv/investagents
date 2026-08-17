@@ -86,17 +86,41 @@ def complete_job(
     job_id: str,
     error: str | None = None,
     result: dict[str, Any] | None = None,
-) -> None:
+) -> bool:
     with connect() as conn:
-        conn.execute(
+        row = conn.execute(
             """
             UPDATE jobs
             SET done_at = now(), error = %s, result = %s
-            WHERE id = %s
+            WHERE id = %s AND done_at IS NULL
+            RETURNING id
             """,
             (error, Json(result) if result is not None else None, job_id),
-        )
+        ).fetchone()
         conn.commit()
+        return row is not None
+
+
+def retry_job(job_id: str, *, next_attempt: int, delay_s: int = 15) -> bool:
+    """Unlock the same job for another try. No-op if already completed."""
+    with connect() as conn:
+        row = conn.execute(
+            """
+            UPDATE jobs
+            SET locked_at = NULL,
+                run_at = now() + (%s * interval '1 second'),
+                payload = jsonb_set(
+                    coalesce(payload, '{}'::jsonb),
+                    '{attempt}',
+                    to_jsonb(%s::int)
+                )
+            WHERE id = %s AND done_at IS NULL
+            RETURNING id
+            """,
+            (delay_s, next_attempt, job_id),
+        ).fetchone()
+        conn.commit()
+        return row is not None
 
 
 def insert_tick_event(

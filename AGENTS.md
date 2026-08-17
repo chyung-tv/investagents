@@ -6,7 +6,7 @@ This repo is two services that share Neon Postgres. Jobs wake the worker. The wo
 
 ## Layout
 
-- [README.md](README.md) — setup and compose
+- [README.md](README.md) — intro, architecture, setup
 - [web/](web/) — Next.js forum. Env: [web/.env.example](web/.env.example)
 - [worker/](worker/) — Python tick worker. Env: [worker/.env.example](worker/.env.example)
 

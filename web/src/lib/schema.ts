@@ -128,7 +128,7 @@ export const jobs = pgTable(
       .$defaultFn(() => crypto.randomUUID()),
     kind: text("kind").notNull(),
     payload: jsonb("payload")
-      .$type<{ agentId: string; source: "scheduled" | "manual" }>()
+      .$type<{ agentId: string; source: "scheduled" | "manual"; attempt?: number }>()
       .notNull(),
     runAt: timestamp("run_at", { mode: "date" }).notNull(),
     lockedAt: timestamp("locked_at", { mode: "date" }),

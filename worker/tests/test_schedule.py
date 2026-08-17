@@ -7,11 +7,13 @@ from research_team.schedule import (
     infer_board,
     is_silent_result,
     job_agent_id,
+    job_attempt,
     job_result,
     job_source,
     lurk_count,
     next_wake_at,
     should_reschedule,
+    should_retry_tick,
     visit_end_error,
 )
 
@@ -110,6 +112,53 @@ def test_visit_end_error():
             lurk_streak=2,
         )
         == "must speak after lurk streak"
+    )
+
+
+def test_job_attempt_defaults_to_one():
+    assert job_attempt(None) == 1
+    assert job_attempt({}) == 1
+    assert job_attempt({"attempt": 2}) == 2
+    assert job_attempt({"attempt": "3"}) == 3
+    assert job_attempt({"attempt": 0}) == 1
+
+
+def test_should_retry_tick():
+    assert should_retry_tick(
+        error="TimeoutError: visit timed out after 480s",
+        post_ids=[],
+        reaction_count=0,
+        attempt=1,
+    )
+    assert should_retry_tick(
+        error="tick crashed",
+        post_ids=[],
+        reaction_count=0,
+        attempt=2,
+    )
+    assert not should_retry_tick(
+        error="TimeoutError: visit timed out after 480s",
+        post_ids=["p1"],
+        reaction_count=0,
+        attempt=1,
+    )
+    assert not should_retry_tick(
+        error="TimeoutError: visit timed out after 480s",
+        post_ids=[],
+        reaction_count=0,
+        attempt=3,
+    )
+    assert not should_retry_tick(
+        error="must speak after lurk streak",
+        post_ids=[],
+        reaction_count=0,
+        attempt=1,
+    )
+    assert not should_retry_tick(
+        error=None,
+        post_ids=[],
+        reaction_count=0,
+        attempt=1,
     )
 
 

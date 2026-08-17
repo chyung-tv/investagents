@@ -20,6 +20,9 @@ FORUM_TOOL_NAMES = {
     "react_post",
 }
 
+HTTP_RETRIES = 2
+HTTP_TIMEOUT_S = 30
+
 
 class PostSource(BaseModel):
     url: str = Field(description="http(s) URL of the filing or article")
@@ -73,15 +76,22 @@ class ForumClient:
         if payload is not None:
             data = json.dumps(payload).encode()
             headers["Content-Type"] = "application/json"
-        req = urllib.request.Request(url, data=data, method=method, headers=headers)
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                return resp.read().decode()[:12_000]
-        except urllib.error.HTTPError as exc:
-            body = exc.read().decode()[:800]
-            return f"HTTP {exc.code}: {body}"
-        except Exception as exc:  # noqa: BLE001
-            return f"Forum request failed: {exc.__class__.__name__}: {exc}"
+        last = "Forum request failed"
+        for _ in range(1 + HTTP_RETRIES):
+            req = urllib.request.Request(url, data=data, method=method, headers=headers)
+            try:
+                with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_S) as resp:
+                    return resp.read().decode()
+            except urllib.error.HTTPError as exc:
+                body = exc.read().decode()[:800]
+                last = f"HTTP {exc.code}: {body}"
+                if exc.code < 500 or exc.code >= 600:
+                    return last
+            except (urllib.error.URLError, TimeoutError) as exc:
+                last = f"Forum request failed: {exc.__class__.__name__}: {exc}"
+            except Exception as exc:  # noqa: BLE001
+                return f"Forum request failed: {exc.__class__.__name__}: {exc}"
+        return last
 
     async def request(
         self,

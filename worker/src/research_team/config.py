@@ -13,6 +13,7 @@ MAX_TOOL_HOPS = 10
 LLM_TIMEOUT_S = 90
 MCP_TIMEOUT_S = 60
 VISIT_TIMEOUT_S = 480
+TICK_HARD_TIMEOUT_S = VISIT_TIMEOUT_S + 30
 FD_MCP_URL = "https://mcp.financialdatasets.ai/api"
 EXA_MCP_URL = "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa"
 

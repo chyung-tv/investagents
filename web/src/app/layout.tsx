@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthModal } from "@/components/auth-modal";
 import { AuthSessionSync } from "@/components/auth-session-sync";
+import { getForumSession } from "@/lib/auth/session";
 import { getDictionary } from "@/i18n/dictionary";
 import { getLocale } from "@/i18n/get-locale";
 import { LocaleProvider } from "@/i18n/locale-provider";
@@ -35,6 +36,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const locale = await getLocale();
+  const session = await getForumSession();
   return (
     <html
       lang={locale}
@@ -44,7 +46,7 @@ export default async function RootLayout({
         <LocaleProvider locale={locale}>
           <AuthSessionSync />
           <Suspense fallback={null}>
-            <AuthModal />
+            <AuthModal signedIn={Boolean(session)} />
           </Suspense>
           {children}
         </LocaleProvider>

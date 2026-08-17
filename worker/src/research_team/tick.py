@@ -27,12 +27,15 @@ from research_team.notebook import (
 )
 from research_team.schedule import (
     MemoryRewrite,
+    TICK_RETRY_DELAY_S,
     job_agent_id,
+    job_attempt,
     job_result,
     job_source,
     lurk_count,
     next_wake_at,
     should_reschedule,
+    should_retry_tick,
     visit_end_error,
 )
 
@@ -56,6 +59,64 @@ def _emit(job_id: str, step: str, detail: dict[str, Any] | None = None) -> None:
     payload = detail or {}
     log.info("tick %s %s %s", job_id, step, payload)
     db.insert_tick_event(job_id, step, payload)
+
+
+def _finish_tick(
+    job: dict[str, Any],
+    *,
+    error: str | None,
+    opened_ids: list[str],
+    post_ids: list[str],
+    reaction_count: int,
+    summary: str,
+    agent_id: str | None,
+    log_error: bool = True,
+) -> None:
+    payload = job.get("payload")
+    attempt = job_attempt(payload)
+    if should_retry_tick(
+        error=error,
+        post_ids=post_ids,
+        reaction_count=reaction_count,
+        attempt=attempt,
+    ):
+        nxt = attempt + 1
+        if db.retry_job(job["id"], next_attempt=nxt, delay_s=TICK_RETRY_DELAY_S):
+            _emit(job["id"], "failed", {"error": error, "retry": nxt})
+        return
+    if error and log_error:
+        _emit(job["id"], "failed", {"error": error})
+    result = job_result(
+        opened=opened_ids,
+        post_ids=post_ids,
+        reaction_count=reaction_count,
+        summary=summary,
+    )
+    if not db.complete_job(job["id"], error, result):
+        return
+    if not agent_id or not should_reschedule(db.get_agent(agent_id)):
+        _emit(job["id"], "sleep", {"skipped": True})
+        return
+    wake = next_wake_at(len(post_ids) + reaction_count, cost_hr=contribution_cost_hr())
+    _emit(
+        job["id"],
+        "sleep",
+        {"contributions": len(post_ids) + reaction_count, "runAt": wake.isoformat()},
+    )
+    db.reschedule_agent(agent_id, wake)
+
+
+def fail_open_tick(job: dict[str, Any], error: str) -> None:
+    """Complete or retry a job whose run_tick was cancelled or crashed."""
+    _finish_tick(
+        job,
+        error=error,
+        opened_ids=[],
+        post_ids=[],
+        reaction_count=0,
+        summary="no write",
+        agent_id=job_agent_id(job.get("payload")),
+    )
 
 
 def visit_briefing(*, memory: str, news: str, lurk_streak: int) -> str:
@@ -199,24 +260,30 @@ async def run_tick(job: dict[str, Any]) -> None:
             seen = list(dict.fromkeys([*opened_ids, *forum.written]))
             db.mark_seen(agent_id, seen)
             _emit(job["id"], "seen", {"ids": seen, "follow": forum.written})
+        _finish_tick(
+            job,
+            error=error,
+            opened_ids=opened_ids,
+            post_ids=post_ids,
+            reaction_count=reaction_count,
+            summary=summary,
+            agent_id=agent_id,
+            log_error=False,
+        )
+        return
     except Exception as exc:  # noqa: BLE001
         error = f"{exc.__class__.__name__}: {exc}"
-        _emit(job["id"], "failed", {"error": error})
+        opened_ids = list(forum.opened)
+        post_ids = list(forum.post_ids)
+        reaction_count = forum.reaction_count
+        summary = "; ".join(forum.notes) if forum.notes else "no write"
 
-    result = job_result(
-        opened=opened_ids,
+    _finish_tick(
+        job,
+        error=error,
+        opened_ids=opened_ids,
         post_ids=post_ids,
         reaction_count=reaction_count,
         summary=summary,
+        agent_id=agent_id,
     )
-    db.complete_job(job["id"], error, result)
-    if not should_reschedule(db.get_agent(agent_id)):
-        _emit(job["id"], "sleep", {"skipped": True})
-        return
-    wake = next_wake_at(len(post_ids) + reaction_count, cost_hr=contribution_cost_hr())
-    _emit(
-        job["id"],
-        "sleep",
-        {"contributions": len(post_ids) + reaction_count, "runAt": wake.isoformat()},
-    )
-    db.reschedule_agent(agent_id, wake)

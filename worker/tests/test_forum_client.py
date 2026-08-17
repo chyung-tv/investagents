@@ -3,7 +3,7 @@ from io import BytesIO
 from unittest.mock import patch
 
 import pytest
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 
 from research_team.forum_client import ForumClient
 
@@ -172,3 +172,102 @@ async def test_forum_client_http_error_is_string():
         text = await client.request("GET", "/api/forum/threads")
     assert text.startswith("HTTP 401")
     assert "Invalid bearer token" in text
+
+
+@pytest.mark.asyncio
+async def test_read_thread_keeps_body_past_12k():
+    posts = [
+        {
+            "id": f"p{i}",
+            "floor": i,
+            "body": ("anthropic ipo floor " * 80) + f" #{i}",
+            "sources": [],
+            "createdAt": "2026-08-17T00:00:00.000Z",
+            "upCount": 0,
+            "downCount": 0,
+            "authorHandle": "lynch",
+            "authorKind": "agent",
+        }
+        for i in range(1, 12)
+    ]
+    payload = {
+        "id": "t1",
+        "title": "Anthropic IPO",
+        "totalFloors": 11,
+        "posts": posts,
+    }
+    raw = json.dumps(payload)
+    assert len(raw) > 12_000
+    client = ForumClient(base_url="http://forum.test", token="tok")
+    tools = {t.name: t for t in client.tools()}
+    with patch(
+        "research_team.forum_client.urllib.request.urlopen",
+        return_value=_Resp(payload),
+    ):
+        text = await tools["read_thread"].ainvoke({"thread_id": "t1"})
+    data = json.loads(text)
+    assert data["totalFloors"] == 11
+    assert len(data["posts"]) == 11
+    assert data["posts"][-1]["floor"] == 11
+    assert data["posts"][-1]["body"].endswith("#11")
+
+
+@pytest.mark.asyncio
+async def test_forum_http_retries_timeout_then_succeeds():
+    client = ForumClient(base_url="http://forum.test", token="tok")
+    calls = {"n": 0}
+
+    def flaky(req, timeout=30):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise URLError("timed out")
+        return _Resp({"id": "t1", "posts": []})
+
+    with patch("research_team.forum_client.urllib.request.urlopen", side_effect=flaky):
+        text = await client.request("GET", "/api/forum/threads/t1")
+    assert calls["n"] == 2
+    assert json.loads(text)["id"] == "t1"
+
+
+@pytest.mark.asyncio
+async def test_forum_http_retries_502_then_succeeds():
+    client = ForumClient(base_url="http://forum.test", token="tok")
+    calls = {"n": 0}
+
+    def flaky(req, timeout=30):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise HTTPError(
+                "http://forum.test/api/forum/threads",
+                502,
+                "bad gateway",
+                hdrs=None,
+                fp=BytesIO(b'{"error":"upstream"}'),
+            )
+        return _Resp({"threads": []})
+
+    with patch("research_team.forum_client.urllib.request.urlopen", side_effect=flaky):
+        text = await client.request("GET", "/api/forum/threads")
+    assert calls["n"] == 2
+    assert "threads" in json.loads(text)
+
+
+@pytest.mark.asyncio
+async def test_forum_http_does_not_retry_401():
+    client = ForumClient(base_url="http://forum.test", token="tok")
+    calls = {"n": 0}
+
+    def once(req, timeout=30):
+        calls["n"] += 1
+        raise HTTPError(
+            "http://forum.test/api/forum/threads",
+            401,
+            "nope",
+            hdrs=None,
+            fp=BytesIO(b'{"error":"Invalid bearer token."}'),
+        )
+
+    with patch("research_team.forum_client.urllib.request.urlopen", side_effect=once):
+        text = await client.request("GET", "/api/forum/threads")
+    assert calls["n"] == 1
+    assert text.startswith("HTTP 401")

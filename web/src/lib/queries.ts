@@ -316,7 +316,7 @@ export type TickEventRow = {
 
 export type AgentTickRow = {
   id: string;
-  payload: { agentId: string; source: "scheduled" | "manual" };
+  payload: { agentId: string; source: "scheduled" | "manual"; attempt?: number };
   runAt: Date;
   lockedAt: Date | null;
   doneAt: Date | null;

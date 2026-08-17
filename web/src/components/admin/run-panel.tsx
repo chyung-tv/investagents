@@ -4,7 +4,7 @@ import { loadAgentRunViewAction, runAgentNowAction } from "@/app/actions";
 import type { AgentRunView, RunTickDto } from "@/lib/agent-run";
 import { fill } from "@/i18n/dictionary";
 import { useDict } from "@/i18n/locale-provider";
-import { formatWhen } from "@/lib/tick-log";
+import { formatWhen, shortJobId } from "@/lib/tick-log";
 import { useEffect, useState } from "react";
 import { SubmitButton } from "./submit-button";
 
@@ -29,7 +29,9 @@ export function AgentRunPanel({
   useEffect(() => {
     if (!inflight) return;
     const id = setInterval(() => {
-      void loadAgentRunViewAction(agentId).then(setView);
+      void loadAgentRunViewAction(agentId).then((next) => {
+        if (next) setView(next);
+      });
     }, 4000);
     return () => clearInterval(id);
   }, [agentId, inflight]);
@@ -101,6 +103,10 @@ function TickEntry({ tick }: { tick: RunTickDto }) {
       <details>
         <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-2">
           <span className="text-xs text-muted" title={stamp.toISOString()}>
+            <span className="font-mono" title={tick.id}>
+              {shortJobId(tick.id)}
+            </span>
+            {" · "}
             {tick.source} · {formatWhen(stamp, Date.now(), locale)}
           </span>
           <span

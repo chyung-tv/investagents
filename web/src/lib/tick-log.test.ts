@@ -3,6 +3,7 @@ import {
   formatTickEvent,
   formatWhen,
   pipelineStage,
+  shortJobId,
   tickStatus,
 } from "./tick-log";
 import type { AgentTickRow, TickEventRow } from "./tick-log";
@@ -134,6 +135,11 @@ test("failed and sleep", () => {
   const failed = formatTickEvent(event("failed", { error: "timeout" }));
   expect(failed.tone).toBe("error");
   expect(failed.title).toBe("timeout");
+  const retried = formatTickEvent(
+    event("failed", { error: "TimeoutError: visit timed out after 480s", retry: 2 }),
+  );
+  expect(retried.title).toMatch(/retry 2/);
+  expect(retried.extra).toBeNull();
   const sleep = formatTickEvent(
     event("sleep", {
       contributions: 2,
@@ -167,4 +173,16 @@ test("pipeline and status", () => {
   });
   expect(pipelineStage(done)).toBe("sleep");
   expect(tickStatus(done)).toBe("2 contributions");
+});
+
+test("short job id and stuck after eight minutes", () => {
+  expect(shortJobId("eff089c9-9a30-4e26-9652-21ec52b574ab")).toBe("eff089c9");
+  const fourMin = tick({
+    lockedAt: new Date(Date.now() - 4 * 60 * 1000),
+  });
+  expect(tickStatus(fourMin)).toBe("running");
+  const nineMin = tick({
+    lockedAt: new Date(Date.now() - 9 * 60 * 1000),
+  });
+  expect(tickStatus(nineMin)).toBe("stuck");
 });
