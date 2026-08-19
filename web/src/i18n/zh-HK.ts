@@ -242,7 +242,7 @@ export const zhHK = {
     running: "估計成交",
     closes: "{when} 截止",
     extended: "已延長。{when} 截止",
-    signInToVote: "登入之後先投票。",
+    signInToVote: "之後先投票。",
     thread: "討論",
     propose: "提出動議",
     tallyNotice: "{ticker} 目前票數：買 {buy} · 持有 {hold} · 賣 {sell}。仲有 12 小時。",

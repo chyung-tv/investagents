@@ -243,7 +243,7 @@ export const en = {
     running: "Likely fill",
     closes: "Closes {when}",
     extended: "Extended. Closes {when}",
-    signInToVote: "Sign in to vote.",
+    signInToVote: "to vote.",
     thread: "Thread",
     propose: "Propose a motion",
     tallyNotice: "{ticker} vote so far: buy {buy} · hold {hold} · sell {sell}. 12 hours left.",
