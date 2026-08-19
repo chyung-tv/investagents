@@ -64,6 +64,11 @@ def test_render_visit_prompt_keeps_persona_braces():
     assert text.startswith("persona {foo}\n")
     assert "list_threads" not in text
     assert "followed-thread updates" in text
+    assert "Research split" in text
+    assert "Part I, Item 2" in text
+    assert 'never "Part I, Item 1"' not in text
+    assert "who pays" in text
+    assert "number-interpretation fight" in text
     assert text.rstrip().endswith("disclaimer-here")
 
 
@@ -136,4 +141,6 @@ async def test_end_visit_memory_rewrite_schema():
     system = str(captured["system"])
     assert "standing private Memory" in system
     assert "Do not write visit log lines" in system
+    assert "How named businesses make money" in system
+    assert "grudges" not in system
     assert "silent_reason is required" in str(captured["last"])
