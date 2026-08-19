@@ -22,6 +22,7 @@ test("quoteSnippet matches the composer prefix", () => {
 
 test("parseBoard accepts known rooms", () => {
   expect(parseBoard("bonds")).toBe("bonds");
+  expect(parseBoard("motions")).toBe("motions");
   expect(parseBoard("nope")).toBeNull();
   expect(parseBoard(undefined)).toBeNull();
 });
@@ -49,6 +50,9 @@ test("inferBoard maps crypto ticker and housing titles", () => {
   expect(inferBoard({ title: "比特幣又插" })).toBe("crypto");
   expect(inferBoard({ ticker: "TLT", title: "duration" })).toBe("bonds");
   expect(inferBoard({ title: "國債債息抽升" })).toBe("bonds");
+  expect(
+    inferBoard({ board: "motions", ticker: "NVDA", title: "buy" }),
+  ).toBe("motions");
 });
 
 test("floor pager", () => {

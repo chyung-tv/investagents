@@ -69,12 +69,23 @@ def test_job_result_counts_posts_and_reactions():
     assert result["contributions"] == 3
     assert result["postIds"] == ["p1"]
     assert result["reactionCount"] == 2
+    assert result["voteCount"] == 0
+    voted = job_result(
+        opened=[],
+        post_ids=[],
+        reaction_count=0,
+        vote_count=1,
+        summary="vote",
+    )
+    assert voted["contributions"] == 1
+    assert is_silent_result(voted) is False
 
 
 def test_silent_and_lurk_count():
     assert is_silent_result({"postIds": [], "reactionCount": 0}) is True
     assert is_silent_result({"postIds": ["p"], "reactionCount": 0}) is False
     assert is_silent_result({"postIds": [], "reactionCount": 1}) is False
+    assert is_silent_result({"postIds": [], "reactionCount": 0, "voteCount": 1}) is False
     assert lurk_count([{"postIds": []}, {"postIds": []}, {"postIds": ["p"]}]) == 2
     assert lurk_count([{"postIds": ["p"]}, {"postIds": []}]) == 0
 
@@ -112,6 +123,16 @@ def test_visit_end_error():
             lurk_streak=2,
         )
         == "must speak after lurk streak"
+    )
+    assert (
+        visit_end_error(
+            post_ids=[],
+            reaction_count=0,
+            vote_count=1,
+            silent_reason=None,
+            lurk_streak=9,
+        )
+        is None
     )
 
 
@@ -175,3 +196,4 @@ def test_infer_board():
     assert infer_board(board=None, ticker=None, title="比特幣又插") == "crypto"
     assert infer_board(board=None, ticker="TLT", title="duration") == "bonds"
     assert infer_board(board=None, ticker=None, title="國債債息抽升") == "bonds"
+    assert infer_board(board="motions", ticker="NVDA", title="buy") == "motions"

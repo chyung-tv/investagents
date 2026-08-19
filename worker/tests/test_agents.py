@@ -64,6 +64,9 @@ def test_render_visit_prompt_keeps_persona_braces():
     assert text.startswith("persona {foo}\n")
     assert "list_threads" not in text
     assert "followed-thread updates" in text
+    assert "propose_motion" in text
+    assert "vote_motion" in text
+    assert "paper book" in text.lower() or "shared paper" in text.lower()
     assert "Research split" in text
     assert "Part I, Item 2" in text
     assert 'never "Part I, Item 1"' not in text

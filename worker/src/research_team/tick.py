@@ -68,6 +68,7 @@ def _finish_tick(
     opened_ids: list[str],
     post_ids: list[str],
     reaction_count: int,
+    vote_count: int,
     summary: str,
     agent_id: str | None,
     log_error: bool = True,
@@ -78,6 +79,7 @@ def _finish_tick(
         error=error,
         post_ids=post_ids,
         reaction_count=reaction_count,
+        vote_count=vote_count,
         attempt=attempt,
     ):
         nxt = attempt + 1
@@ -90,6 +92,7 @@ def _finish_tick(
         opened=opened_ids,
         post_ids=post_ids,
         reaction_count=reaction_count,
+        vote_count=vote_count,
         summary=summary,
     )
     if not db.complete_job(job["id"], error, result):
@@ -97,11 +100,16 @@ def _finish_tick(
     if not agent_id or not should_reschedule(db.get_agent(agent_id)):
         _emit(job["id"], "sleep", {"skipped": True})
         return
-    wake = next_wake_at(len(post_ids) + reaction_count, cost_hr=contribution_cost_hr())
+    wake = next_wake_at(
+        len(post_ids) + reaction_count + vote_count, cost_hr=contribution_cost_hr()
+    )
     _emit(
         job["id"],
         "sleep",
-        {"contributions": len(post_ids) + reaction_count, "runAt": wake.isoformat()},
+        {
+            "contributions": len(post_ids) + reaction_count + vote_count,
+            "runAt": wake.isoformat(),
+        },
     )
     db.reschedule_agent(agent_id, wake)
 
@@ -114,6 +122,7 @@ def fail_open_tick(job: dict[str, Any], error: str) -> None:
         opened_ids=[],
         post_ids=[],
         reaction_count=0,
+        vote_count=0,
         summary="no write",
         agent_id=job_agent_id(job.get("payload")),
     )
@@ -130,6 +139,38 @@ def _format_inbox(items: list[dict[str, Any]]) -> str:
         handle = str(item.get("latestHandle") or "anon")
         snippet = str(item.get("latestBodySnippet") or "").replace("\n", " ")[:80]
         lines.append(f"- {tid} {title} · {n} new · @{handle}: {snippet}")
+    return "\n".join(lines)
+
+
+def _format_portfolio(data: dict[str, Any]) -> str:
+    if not data:
+        return "(none)"
+    cash = data.get("cash")
+    nav = data.get("nav")
+    lines = [f"cash {cash} · NAV {nav}"]
+    positions = data.get("positions")
+    if isinstance(positions, list):
+        for item in positions:
+            if not isinstance(item, dict):
+                continue
+            ticker = str(item.get("ticker") or "")
+            shares = item.get("shares")
+            last = item.get("last")
+            lines.append(f"- pos {ticker} {shares} @ {last}")
+    motions = data.get("motions")
+    if isinstance(motions, list):
+        for item in motions:
+            if not isinstance(item, dict):
+                continue
+            ticker = str(item.get("ticker") or "")
+            mid = str(item.get("id") or "")
+            tid = str(item.get("threadId") or "")
+            counts = item.get("counts") if isinstance(item.get("counts"), dict) else {}
+            lines.append(
+                f"- motion {mid} {ticker} thread {tid} "
+                f"buy {counts.get('buy', 0)} hold {counts.get('hold', 0)} "
+                f"sell {counts.get('sell', 0)} close {item.get('closeAt')}"
+            )
     return "\n".join(lines)
 
 
@@ -154,6 +195,7 @@ def visit_briefing(
     lurk_streak: int,
     inbox: str = "",
     discover: str = "",
+    portfolio: str = "",
 ) -> str:
     lurk = (
         "You already lurked twice. You must post this visit."
@@ -165,6 +207,7 @@ def visit_briefing(
         f"FOLLOWING UPDATES:\n{inbox or '(none)'}\n\n"
         f"MARKET NEWS:\n{news or '(none)'}\n\n"
         f"DISCOVERY:\n{discover or '(none)'}\n\n"
+        f"PAPER BOOK (shared, not real money):\n{portfolio or '(none)'}\n\n"
         f"{lurk}\n"
         "Write the notebook and any public posts in Hong Kong Cantonese (口語粵語).\n"
         f"{DISCLAIMER}"
@@ -203,6 +246,7 @@ async def run_tick(job: dict[str, Any]) -> None:
     opened_ids: list[str] = []
     post_ids: list[str] = []
     reaction_count = 0
+    vote_count = 0
     try:
         _emit(
             job["id"],
@@ -225,6 +269,13 @@ async def run_tick(job: dict[str, Any]) -> None:
             if isinstance(item.get("id"), str) and item.get("id")
         ]
         _emit(job["id"], "discover", {"n": len(discover_items), "ids": discover_ids})
+        book = await forum.portfolio()
+        motions = book.get("motions") if isinstance(book.get("motions"), list) else []
+        _emit(
+            job["id"],
+            "portfolio",
+            {"n": len(motions), "cash": book.get("cash"), "nav": book.get("nav")},
+        )
         streak = lurk_count(db.lurk_results(agent_id))
         _emit(job["id"], "visit", {"status": "started", "lurkStreak": streak})
         research = await _await_step("tools", forum_tools(), timeout=MCP_TIMEOUT_S)
@@ -252,6 +303,7 @@ async def run_tick(job: dict[str, Any]) -> None:
                     lurk_streak=streak,
                     inbox=_format_inbox(inbox_items),
                     discover=_format_discover(discover_items),
+                    portfolio=_format_portfolio(book),
                 ),
                 tools=tools,
                 on_pin=on_pin,
@@ -261,6 +313,7 @@ async def run_tick(job: dict[str, Any]) -> None:
         opened_ids = list(forum.opened)
         post_ids = list(forum.post_ids)
         reaction_count = forum.reaction_count
+        vote_count = forum.vote_count
         summary = "; ".join(forum.notes) if forum.notes else "no write"
         _emit(
             job["id"],
@@ -269,6 +322,7 @@ async def run_tick(job: dict[str, Any]) -> None:
                 "opened": opened_ids,
                 "postIds": post_ids,
                 "reactions": reaction_count,
+                "votes": vote_count,
                 "notes": forum.notes,
             },
         )
@@ -279,7 +333,7 @@ async def run_tick(job: dict[str, Any]) -> None:
             end_visit(
                 mind=agent["persona_prompt"] or "",
                 messages=messages,
-                had_public_write=bool(post_ids or reaction_count),
+                had_public_write=bool(post_ids or reaction_count or vote_count),
                 compact=compact,
             ),
         )
@@ -303,6 +357,7 @@ async def run_tick(job: dict[str, Any]) -> None:
         error = visit_end_error(
             post_ids=post_ids,
             reaction_count=reaction_count,
+            vote_count=vote_count,
             silent_reason=ending.silent_reason,
             lurk_streak=streak,
         )
@@ -319,6 +374,7 @@ async def run_tick(job: dict[str, Any]) -> None:
             opened_ids=opened_ids,
             post_ids=post_ids,
             reaction_count=reaction_count,
+            vote_count=vote_count,
             summary=summary,
             agent_id=agent_id,
             log_error=False,
@@ -329,6 +385,7 @@ async def run_tick(job: dict[str, Any]) -> None:
         opened_ids = list(forum.opened)
         post_ids = list(forum.post_ids)
         reaction_count = forum.reaction_count
+        vote_count = forum.vote_count
         summary = "; ".join(forum.notes) if forum.notes else "no write"
 
     _finish_tick(
@@ -337,6 +394,7 @@ async def run_tick(job: dict[str, Any]) -> None:
         opened_ids=opened_ids,
         post_ids=post_ids,
         reaction_count=reaction_count,
+        vote_count=vote_count,
         summary=summary,
         agent_id=agent_id,
     )

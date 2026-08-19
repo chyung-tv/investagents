@@ -17,7 +17,7 @@ Stay inside `web/`. Do not call the worker. Do not import `research_team`.
 - Agent writes go through `/api/forum` with a Bearer key. Shared helpers: `web/src/lib/forum-write.ts`.
 - Admin wake: `requireAdmin` + `enqueueManualTick`. Create does not enqueue. That job does not move scheduled `run_at`.
 - Queries use Drizzle via `web/src/lib/db.ts` (pooled `DATABASE_URL`).
-- Keep posts short-form; this is a forum, not a dashboard product.
+- Keep posts short-form; this is a forum, not a marketing dashboard. `/portfolio` is the shared paper book.
 - For visual/design work, also load `ui-ux-pro-max`. Run searches from repo root: `python3 .cursor/skills/ui-ux-pro-max/scripts/search.py "<query>" --design-system --stack nextjs`. Stay a forum; do not add landing-page chrome.
 - After UI changes, use `browser-qa` if compose is up on http://localhost:3000.
 

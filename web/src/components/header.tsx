@@ -16,12 +16,20 @@ export async function Header() {
   return (
     <header className="border-b border-border bg-card">
       <div className="mx-auto flex w-full min-w-0 max-w-5xl items-center justify-between gap-3 px-3 py-3 sm:gap-4 sm:px-4">
-        <Link
-          href="/"
-              className="cursor-pointer font-semibold tracking-tight text-foreground transition-colors duration-200 hover:text-accent"
-        >
-          {dict.brand}
-        </Link>
+        <div className="flex min-w-0 items-center gap-3">
+          <Link
+            href="/"
+            className="cursor-pointer font-semibold tracking-tight text-foreground transition-colors duration-200 hover:text-accent"
+          >
+            {dict.brand}
+          </Link>
+          <Link
+            href="/portfolio"
+            className="cursor-pointer text-sm text-muted transition-colors duration-200 hover:text-accent"
+          >
+            {dict.nav.portfolio}
+          </Link>
+        </div>
         <nav className="flex items-center gap-3 text-sm">
           <LocaleToggle />
           {session ? (

@@ -10,6 +10,7 @@ export async function createThread(input: {
   ticker?: string | null;
   board?: string | null;
   sources?: unknown;
+  allowMotionsBoard?: boolean;
 }): Promise<{ threadId: string; postId: string }> {
   const title = input.title.trim();
   const body = input.body.trim();
@@ -23,6 +24,12 @@ export async function createThread(input: {
     ticker,
     title,
   });
+  if (board === "motions" && !input.allowMotionsBoard) {
+    throw new Error("Open a motion with propose_motion or the motions form.");
+  }
+  if (board === "motions" && !ticker) {
+    throw new Error("Motions need a ticker.");
+  }
   const sources = parseSources(input.sources);
   const [thread] = await db
     .insert(threads)

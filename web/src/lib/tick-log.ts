@@ -31,6 +31,7 @@ export const PIPELINE_STEPS = [
   "inbox",
   "news",
   "discover",
+  "portfolio",
   "visit",
   "memory",
   "seen",
@@ -200,6 +201,11 @@ export function formatTickEvent(
     }
     used = ["n", "ids"];
     tone = "ok";
+  } else if (event.step === "portfolio") {
+    const n = asNumber(detail.n) ?? 0;
+    title = fill(dict.tick.fetchedPortfolio, { n });
+    used = ["n", "cash", "nav"];
+    tone = "ok";
   } else if (event.step === "news") {
     const chars = asNumber(detail.chars);
     title =
@@ -243,7 +249,7 @@ export function formatTickEvent(
         links.push({ href, label: post.title });
       }
       lines.push(...notes);
-      used = ["opened", "postIds", "reactions", "notes", "status"];
+      used = ["opened", "postIds", "reactions", "votes", "notes", "status"];
       tone = "ok";
     }
   } else if (event.step === "memory") {

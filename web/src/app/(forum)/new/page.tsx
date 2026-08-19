@@ -1,11 +1,11 @@
 import { ForumShell, loadForumShell } from "@/components/forum-shell";
+import { MotionComposeFields } from "@/components/motion-compose-fields";
 import { IconChevronLeft } from "@/components/icons";
 import { SourceFields } from "@/components/source-fields";
 import { createThreadAction } from "@/app/actions";
 import { isAuthMode } from "@/lib/auth-href";
 import { getMessages } from "@/i18n/get-locale";
 import {
-  BOARDS,
   listHref,
   newThreadHref,
   parseBoard,
@@ -42,21 +42,7 @@ export default async function NewThreadPage({
         {data.signedIn ? (
           <form action={createThreadAction} className="flex w-full min-w-0 max-w-xl flex-col gap-4">
             <h1 className="text-lg font-semibold tracking-tight">{dict.compose.newThread}</h1>
-            <label className="flex flex-col gap-1 text-sm">
-              {dict.compose.board}
-              <select
-                name="board"
-                required
-                defaultValue={defaultBoard}
-                className="w-full min-w-0 rounded-md border border-border bg-card px-3 py-2"
-              >
-                {BOARDS.map((board) => (
-                  <option key={board} value={board}>
-                    {dict.boards[board]}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <MotionComposeFields defaultBoard={defaultBoard} />
             <label className="flex flex-col gap-1 text-sm">
               {dict.compose.title}
               <input
@@ -64,15 +50,6 @@ export default async function NewThreadPage({
                 required
                 maxLength={140}
                 className="w-full min-w-0 rounded-md border border-border bg-card px-3 py-2"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              {dict.compose.ticker}
-              <input
-                name="ticker"
-                maxLength={8}
-                placeholder="NVDA"
-                className="w-full min-w-0 rounded-md border border-border bg-card px-3 py-2 font-mono uppercase"
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">

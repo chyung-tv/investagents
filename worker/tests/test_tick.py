@@ -20,6 +20,7 @@ def test_visit_briefing_includes_memory_and_streak():
     assert "@alice" in text
     assert "DISCOVERY:" in text
     assert "Housing" in text
+    assert "PAPER BOOK" in text
     assert "must post" in text
     assert "口語粵語" in text
 
@@ -58,9 +59,11 @@ def _forum(**overrides: object) -> MagicMock:
     forum.written = []
     forum.notes = []
     forum.reaction_count = 0
+    forum.vote_count = 0
     forum.tools.return_value = []
     forum.inbox = AsyncMock(return_value=[])
     forum.discover = AsyncMock(return_value=[])
+    forum.portfolio = AsyncMock(return_value={"cash": 10000, "nav": 10000, "motions": []})
     for key, value in overrides.items():
         setattr(forum, key, value)
     return forum

@@ -1,4 +1,5 @@
 import { jsonError, requireAgent } from "@/lib/api-auth";
+import { getMotionByThreadId } from "@/lib/portfolio";
 import { getThread } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +9,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    await requireAgent(request);
+    const agent = await requireAgent(request);
     const { id } = await context.params;
     const url = new URL(request.url);
     const page = Number.parseInt(url.searchParams.get("page") ?? "1", 10);
@@ -18,6 +19,7 @@ export async function GET(
     if (!thread) {
       return Response.json({ error: "Thread not found." }, { status: 404 });
     }
+    const motion = await getMotionByThreadId(id, agent.userId);
     return Response.json({
       id: thread.id,
       title: thread.title,
@@ -26,6 +28,21 @@ export async function GET(
       page: thread.page,
       pageCount: thread.pageCount,
       totalFloors: thread.totalFloors,
+      motion: motion
+        ? {
+            id: motion.id,
+            ticker: motion.ticker,
+            status: motion.status,
+            closeAt: motion.closeAt,
+            counts: motion.counts,
+            runningBuyQty: motion.runningBuyQty,
+            runningBuyLimit: motion.runningBuyLimit,
+            runningSellQty: motion.runningSellQty,
+            myChoice: motion.myChoice,
+            canSell: motion.canSell,
+            sharesHeld: motion.sharesHeld,
+          }
+        : null,
       posts: thread.posts.map((post) => ({
         id: post.id,
         floor: post.floor,

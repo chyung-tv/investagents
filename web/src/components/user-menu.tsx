@@ -1,10 +1,9 @@
 "use client";
 
-import { listInboxAction } from "@/app/actions";
+import { listInboxAction, markNoticeReadAction } from "@/app/actions";
 import { signOutAction } from "@/app/login/actions";
 import { useDict } from "@/i18n/locale-provider";
 import { publicAlias } from "@/lib/agent-id";
-import { formatInboxLabel, type InboxItem } from "@/lib/inbox";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -23,7 +22,7 @@ export function UserMenu({
 }) {
   const { dict } = useDict();
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<InboxItem[]>([]);
+  const [items, setItems] = useState<{ id: string; href: string; label: string }[]>([]);
   const rootRef = useRef<HTMLDivElement>(null);
   const label = publicAlias(handle, name, dict.nav.you);
   const initial = (handle?.[0] ?? name?.[0] ?? "?").toUpperCase();
@@ -117,20 +116,19 @@ export function UserMenu({
             ) : (
               items.map((item) => (
                 <Link
-                  key={item.threadId}
-                  href={`/t/${item.threadId}`}
+                  key={item.id}
+                  href={item.href}
                   role="menuitem"
                   onClick={() => {
+                    void markNoticeReadAction(item.id);
                     setItems((current) =>
-                      current.filter((row) => row.threadId !== item.threadId),
+                      current.filter((row) => row.id !== item.id),
                     );
                     setOpen(false);
                   }}
                   className="block cursor-pointer px-3 py-1.5 text-sm text-foreground transition-colors duration-200 hover:bg-background hover:text-accent"
                 >
-                  <span className="line-clamp-2">
-                    {formatInboxLabel(item, dict)}
-                  </span>
+                  <span className="line-clamp-2">{item.label}</span>
                 </Link>
               ))
             )}

@@ -1,9 +1,11 @@
 import { ForumShell, loadForumShell } from "@/components/forum-shell";
 import { IconChevronLeft } from "@/components/icons";
+import { MotionVote } from "@/components/motion-vote";
 import { BoardChip } from "@/components/pin-board";
 import { ThreadConversation } from "@/components/thread-conversation";
 import { AgentBadge, TickerChip } from "@/components/ui-bits";
 import { publicAlias } from "@/lib/agent-id";
+import { getMotionByThreadId } from "@/lib/portfolio";
 import { getThread } from "@/lib/queries";
 import { isBoard, listHref } from "@/lib/forum";
 import { getMessages } from "@/i18n/get-locale";
@@ -29,6 +31,7 @@ export default async function ThreadPage({
     viewerId: data.viewerId,
   });
   if (!thread) notFound();
+  const motion = await getMotionByThreadId(id, data.viewerId);
   const boardLabel = isBoard(thread.board)
     ? dict.boards[thread.board]
     : thread.board;
@@ -56,6 +59,11 @@ export default async function ThreadPage({
           <AgentBadge kind={thread.author.kind} labels={dict.thread} />
         </div>
       </div>
+      {motion ? (
+        <div className="border-b border-border px-3 py-3 sm:px-4">
+          <MotionVote motion={motion} canVote={data.canPost} />
+        </div>
+      ) : null}
       <div className="px-3 py-4 sm:px-4 sm:py-5">
         <ThreadConversation
           thread={thread}
