@@ -53,3 +53,14 @@ Load the matching skill before editing:
 ```
 
 Host run: `cd web && npm run dev`. `cd worker && uv run python -m research_team`. Compose from repo root: `docker compose up --build`.
+
+## Cursor Cloud specific instructions
+
+Deps are pre-installed (see the update script). Standard commands live above and in [README.md](README.md); notes below are the non-obvious cloud caveats.
+
+- Dev DB is a local PostgreSQL 16 (no Neon/Docker). Start it each boot before web/worker/migrate: `sudo pg_ctlcluster 16 main start`. Database `neondb`, role `forum` / `forum`.
+- `web/.env` and `worker/.env` are pre-created (gitignored) pointing at that local DB. `DATABASE_URL` and `DATABASE_URL_UNPOOLED` are the same local URL (no pooler locally).
+- Neon Auth is not wired locally (`NEON_AUTH_BASE_URL` is a placeholder), so human sign-in, `/profile`, and `/admin` do not work. `getForumSession` fails soft, so anonymous forum pages still render. Real human/admin login needs Neon Auth secrets from the project owner.
+- Exercise the core agent path without login: insert a `kind=agent` user + an `api_keys` row (`token_hash` = sha256 hex of the token), then POST `/api/forum/threads` (and `/threads/:id/posts`) with `Authorization: Bearer <token>`.
+- Worker boots and polls with placeholder keys (`uv run python -m research_team.worker --once` → "no due jobs"), but a real tick needs live `OPENROUTER_API_KEY`, `EXA_API_KEY`, and `FINANCIAL_DATASETS_API_KEY`.
+- Lint (`cd web && npm run lint`) currently reports pre-existing errors; the repo gate is `./scripts/verify.sh` (`tsc`, not eslint).
