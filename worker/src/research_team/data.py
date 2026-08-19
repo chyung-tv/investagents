@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from datetime import datetime
 from typing import Any
 
@@ -22,6 +23,43 @@ from research_team.config import (
 _mcp_client: MultiServerMCPClient | None = None
 _tools_by_server: dict[str, list[BaseTool]] = {}
 _tools_lock = asyncio.Lock()
+
+_PART_ITEM = re.compile(
+    r"(?i)^\s*part\s+([ivx]+)\s*,\s*item[\s-]*(\d+(?:\.\d+)?[A-Za-z]?)\s*$"
+)
+_ITEM_TOKEN_TAIL = re.compile(
+    r"(?:Item[\s-]*)?(\d+(?:\.\d+)?[A-Za-z]?)\s*$", flags=re.I
+)
+_ITEM_TOKEN_ANY = re.compile(r"Item[\s-]*(\d+(?:\.\d+)?[A-Za-z]?)", flags=re.I)
+_ROMAN_PART = {"i": "I", "ii": "II", "iii": "III", "iv": "IV"}
+
+# 10-Q labels the API actually has. 10-K Item-7 (MD&A) is Part I, Item 2 here.
+TEN_Q_ITEM = {
+    "1": "Part I, Item 1",
+    "2": "Part I, Item 2",
+    "3": "Part I, Item 3",
+    "4": "Part I, Item 4",
+    "7": "Part I, Item 2",
+    "7A": "Part I, Item 3",
+    "1A": "Part II, Item 1A",
+}
+
+FD_QUANT_EXTRA = (
+    " Quantitative: prices, statements, snapshots, headlines as facts. "
+    "Do not use this to explain customers, product, or competition."
+)
+EXA_EXTRA = (
+    " Qualitative: how the business works, who the customer is, why they stay, "
+    "competitors, regulation, management, industry structure. "
+    "Do not search a number Financial Datasets already returns or a multiple "
+    "already on the floor. Always cite title + URL. Filings win when numbers conflict."
+)
+FILING_ITEMS_EXTRA = (
+    " The company's own disclosure (business, risk, MD&A), not a price print. "
+    "10-K items: Item-1, Item-1A, Item-7. "
+    "10-Q items: Part I, Item 1 (financials), Part I, Item 2 (MD&A). "
+    "Do not send 10-K Item-7 on a 10-Q."
+)
 
 FILING_ITEM_IDS = {
     "Item-1",
@@ -79,37 +117,80 @@ FILING_ITEM_IDS = {
 }
 
 
-def coerce_filing_item(raw: str) -> str:
-    """Map 'Part I, Item 1A' / 'Item 7' to Financial Datasets enums like Item-1A."""
-    import re
-
-    text = (raw or "").strip()
-    if text in FILING_ITEM_IDS:
-        return text
-    match = re.search(r"(?:Item[\s-]*)?(\d+(?:\.\d+)?[A-Za-z]?)\s*$", text, flags=re.I)
+def _item_token(text: str) -> str | None:
+    match = _ITEM_TOKEN_TAIL.search(text)
     if not match:
-        match = re.search(r"Item[\s-]*(\d+(?:\.\d+)?[A-Za-z]?)", text, flags=re.I)
+        match = _ITEM_TOKEN_ANY.search(text)
     if not match:
-        return text
+        return None
     token = match.group(1)
     if token[-1].isalpha():
-        candidate = f"Item-{token[:-1]}{token[-1].upper()}"
-    else:
-        candidate = f"Item-{token}"
+        return f"{token[:-1]}{token[-1].upper()}"
+    return token
+
+
+def _canonical_part_item(part: str, item: str) -> str:
+    roman = _ROMAN_PART.get(part.lower(), part.upper())
+    token = _item_token(item) or item
+    return f"Part {roman}, Item {token}"
+
+
+def _coerce_10k_item(text: str) -> str:
+    if text in FILING_ITEM_IDS:
+        return text
+    token = _item_token(text)
+    if not token:
+        return text
+    candidate = f"Item-{token}"
     return candidate if candidate in FILING_ITEM_IDS else text
+
+
+def _coerce_10q_item(text: str) -> str:
+    part = _PART_ITEM.match(text)
+    if part:
+        return _canonical_part_item(part.group(1), part.group(2))
+    token = _item_token(text)
+    if not token:
+        return text
+    if "." in token:
+        candidate = f"Item-{token}"
+        return candidate if candidate in FILING_ITEM_IDS else text
+    return TEN_Q_ITEM.get(token.upper(), f"Part I, Item {token}")
+
+
+def coerce_filing_item(raw: str, filing_type: str = "10-K") -> str:
+    """Map human filing labels to the enum the FD API wants for that form."""
+    text = (raw or "").strip()
+    filing = (filing_type or "10-K").upper()
+    if filing == "10-Q":
+        return _coerce_10q_item(text)
+    return _coerce_10k_item(text)
+
+
+def tool_description_extra(name: str) -> str:
+    if name == "get_filing_items":
+        return FILING_ITEMS_EXTRA
+    if name in DEBATER_EXA_TOOLS:
+        return EXA_EXTRA
+    if name in GATHERER_TOOLS or name in DEBATER_FD_TOOLS:
+        return FD_QUANT_EXTRA
+    return ""
 
 
 def _prepare_kwargs(tool_name: str, kwargs: dict[str, Any]) -> dict[str, Any]:
     prepared = dict(kwargs)
     if tool_name != "get_filing_items":
         return prepared
-    items = prepared.get("item")
-    if isinstance(items, str):
-        prepared["item"] = [coerce_filing_item(items)]
-    elif isinstance(items, list):
-        prepared["item"] = [coerce_filing_item(str(x)) for x in items]
     if not prepared.get("filing_type"):
         prepared["filing_type"] = "10-K"
+    filing_type = str(prepared["filing_type"])
+    items = prepared.get("item")
+    if isinstance(items, str):
+        prepared["item"] = [coerce_filing_item(items, filing_type)]
+    elif isinstance(items, list):
+        prepared["item"] = [
+            coerce_filing_item(str(x), filing_type) for x in items
+        ]
     if prepared.get("filing_type") in {"10-K", "10-Q"} and not prepared.get("year"):
         prepared["year"] = datetime.now().year - 1
     return prepared
@@ -126,18 +207,7 @@ def _tool_result_text(value: Any) -> str:
 
 def _wrap_tool(tool: BaseTool) -> BaseTool:
     """Fail-soft async tool; keep MCP name/description/schema."""
-    extra = ""
-    if tool.name == "get_filing_items":
-        extra = (
-            " item must be enums like Item-1, Item-1A, Item-7, Item-7A "
-            "(not 'Part I, Item 1')."
-        )
-    elif tool.name in DEBATER_EXA_TOOLS:
-        extra = (
-            " Use for industry, competitors, regulation, management, sentiment, "
-            "and anything filings do not cover. Always cite title + URL. "
-            "Filings win when numbers conflict."
-        )
+    extra = tool_description_extra(tool.name)
 
     async def _async(**kwargs: Any) -> str:
         try:
