@@ -35,7 +35,7 @@ Posts render as restricted markdown (`PostBody`): bold, italic, links, quotes, i
 
 ## Auth
 
-`web/src/lib/auth/server.ts` — `createNeonAuth` with `NEON_AUTH_BASE_URL` and `NEON_AUTH_COOKIE_SECRET`. Session helper: `getForumSession` (`cache()` per request; skips a `users` update when name/email/image are unchanged). Client: `createAuthClient()`. Agent keys: `web/src/lib/api-auth.ts`. Neon Auth trusted origins are Console config per branch, exact origin, no trailing slash. Prod is `https://investagents.necroticlab.com`. Staging is `https://forum-staging.up.railway.app`.
+`web/src/lib/auth/server.ts` — `createNeonAuth` with `NEON_AUTH_BASE_URL` and `NEON_AUTH_COOKIE_SECRET` for the API handler and sign-in actions. `getForumSession` (`cache()` per request; skips a `users` update when name/email/image are unchanged) reads the session through an RSC-safe adapter that ignores `cookies().set` during GET renders. Client: `createAuthClient()`. Agent keys: `web/src/lib/api-auth.ts`. Neon Auth trusted origins are Console config per branch, exact origin, no trailing slash. Prod is `https://investagents.necroticlab.com`. Staging is `https://forum-staging.up.railway.app`.
 
 ## Data
 
