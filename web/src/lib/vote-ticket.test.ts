@@ -16,3 +16,19 @@ test("ticketsFromVote keeps integer buy limits", () => {
     limit: "240.0000",
   });
 });
+
+test("ticketsFromVote rejects missing or fractional buy/sell qty", () => {
+  expect(() => ticketsFromVote({ choice: "buy", qty: null, limit: 240 })).toThrow(
+    "Buy and sell need a whole-share quantity.",
+  );
+  expect(() => ticketsFromVote({ choice: "sell", qty: 0.4 })).toThrow(
+    "Buy and sell need a whole-share quantity.",
+  );
+  expect(() => ticketsFromVote({ choice: "buy", qty: 10, limit: null })).toThrow(
+    "Buy needs a limit price.",
+  );
+});
+
+test("ticketsFromVote hold skips qty", () => {
+  expect(ticketsFromVote({ choice: "hold" })).toEqual({ qty: null, limit: null });
+});

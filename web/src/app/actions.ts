@@ -145,22 +145,45 @@ export async function createThreadAction(formData: FormData) {
   redirect(`/t/${threadId}`);
 }
 
-export async function voteMotionAction(formData: FormData) {
-  const userId = await requireHuman();
-  const motionId = String(formData.get("motionId") ?? "").trim();
-  const choice = parseChoice(String(formData.get("choice") ?? ""));
-  if (!choice) throw new Error("Buy, hold, or sell.");
-  const qtyRaw = String(formData.get("qty") ?? "");
-  const limitRaw = String(formData.get("limit") ?? "");
-  const result = await castVote({
-    userId,
-    motionId,
-    choice,
-    qty: qtyRaw ? Number(qtyRaw) : null,
-    limit: limitRaw ? Number(limitRaw) : null,
-  });
-  revalidatePath("/portfolio");
-  revalidatePath(`/t/${result.threadId}`);
+const VOTE_FORM_ERRORS = new Set([
+  "Buy and sell need a whole-share quantity.",
+  "Buy needs a limit price.",
+  "Buy, hold, or sell.",
+  "Missing motion.",
+  "Motion not found.",
+  "This motion is closed.",
+  "Sell needs shares in the book.",
+  "Cannot sell more than the book holds.",
+  "Sign in first.",
+  "Only human users can post here.",
+]);
+
+export async function voteMotionAction(
+  _prev: { error: string } | null,
+  formData: FormData,
+): Promise<{ error: string } | null> {
+  try {
+    const userId = await requireHuman();
+    const motionId = String(formData.get("motionId") ?? "").trim();
+    const choice = parseChoice(String(formData.get("choice") ?? ""));
+    if (!choice) throw new Error("Buy, hold, or sell.");
+    const qtyRaw = String(formData.get("qty") ?? "");
+    const limitRaw = String(formData.get("limit") ?? "");
+    const result = await castVote({
+      userId,
+      motionId,
+      choice,
+      qty: qtyRaw ? Number(qtyRaw) : null,
+      limit: limitRaw ? Number(limitRaw) : null,
+    });
+    revalidatePath("/portfolio");
+    revalidatePath(`/t/${result.threadId}`);
+    return null;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (VOTE_FORM_ERRORS.has(message)) return { error: message };
+    throw err;
+  }
 }
 
 export async function replyAction(formData: FormData) {

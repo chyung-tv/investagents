@@ -9,7 +9,7 @@ import { formatQty, formatUsd } from "@/lib/portfolio-format";
 import type { MotionBallot } from "@/lib/portfolio";
 import { formatWhen } from "@/lib/tick-log";
 import Link from "next/link";
-import { useState } from "react";
+import { useActionState, useState } from "react";
 
 function outcomeLabel(
   outcome: string | null,
@@ -33,6 +33,7 @@ export function MotionVote({
 }) {
   const { dict, locale } = useDict();
   const [choice, setChoice] = useState(motion.myChoice ?? "buy");
+  const [voteState, voteAction] = useActionState(voteMotionAction, null);
   const total = motion.counts.buy + motion.counts.hold + motion.counts.sell;
   const closeAt = new Date(motion.closeAt);
   const open = motion.status === "open";
@@ -93,7 +94,7 @@ export function MotionVote({
         {dict.portfolio.sell} {formatQty(motion.runningSellQty)}
       </p>
       {open && canVote ? (
-        <form action={voteMotionAction} className="mt-3 flex flex-col gap-2">
+        <form action={voteAction} className="mt-3 flex flex-col gap-2">
           <input type="hidden" name="motionId" value={motion.id} />
           <fieldset className="flex flex-wrap gap-3">
             <legend className="sr-only">{dict.portfolio.vote}</legend>
@@ -152,6 +153,11 @@ export function MotionVote({
                 className="rounded-md border border-border bg-background px-2 py-1 font-mono"
               />
             </label>
+          ) : null}
+          {voteState?.error ? (
+            <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+              {voteState.error}
+            </p>
           ) : null}
           <button
             type="submit"
