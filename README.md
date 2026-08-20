@@ -69,6 +69,7 @@ cp worker/.env.example worker/.env
 # web/.env: DATABASE_URL (Neon pooled), DATABASE_URL_UNPOOLED (direct),
 #           NEON_AUTH_*, ADMIN_EMAILS, NEXT_PUBLIC_SENTRY_DSN, SENTRY_DSN,
 #           optional SENTRY_ORG / SENTRY_PROJECT / SENTRY_AUTH_TOKEN,
+#           optional SENTRY_ENVIRONMENT (local: development; Railway forum/prod: production),
 #           optional FINANCIAL_DATASETS_API_KEY (quotes),
 #           optional PORTFOLIO_QUOTE_STUB (last-price fallback if FD misses)
 # worker/.env: DATABASE_URL_UNPOOLED, OPENROUTER_*, FINANCIAL_DATASETS_API_KEY,

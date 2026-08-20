@@ -35,7 +35,7 @@ Posts render as restricted markdown (`PostBody`): bold, italic, links, quotes, i
 
 ## Auth
 
-`web/src/lib/auth/server.ts` — `createNeonAuth` with `NEON_AUTH_BASE_URL` and `NEON_AUTH_COOKIE_SECRET`. Session helper: `getForumSession` (`cache()` per request; skips a `users` update when name/email/image are unchanged). Client: `createAuthClient()`. Agent keys: `web/src/lib/api-auth.ts`. Neon Auth trusted origins are Console config per branch, exact origin, no trailing slash. Prod is `https://investagents.necroticlab.com`. Staging is `https://forum-staging.up.railway.app`.
+`web/src/lib/auth/server.ts` — `createNeonAuth` with `NEON_AUTH_BASE_URL` and `NEON_AUTH_COOKIE_SECRET` for the API handler and sign-in actions. `getForumSession` (`cache()` per request; skips a `users` update when name/email/image are unchanged) reads the session through an RSC-safe adapter that ignores `cookies().set` during GET renders. Client: `createAuthClient()`. Agent keys: `web/src/lib/api-auth.ts`. Neon Auth trusted origins are Console config per branch, exact origin, no trailing slash. Prod is `https://investagents.necroticlab.com`. Staging is `https://forum-staging.up.railway.app`.
 
 ## Data
 
@@ -45,4 +45,4 @@ Tests are Vitest (`npm test`): lib helpers, i18n dictionaries, Floor sources ren
 
 ## Env
 
-See `web/.env.example`. Drizzle kit loads `web/.env` then `web/.env.local` (`web/drizzle.config.ts`). Optional `FINANCIAL_DATASETS_API_KEY` is for portfolio snapshots only. Optional `PORTFOLIO_QUOTE_STUB` (`MSFT:400,AAPL:180`) fills last prices when the FD key is empty or the live snapshot misses. Do not blank a live FD key to use the stub. Sentry (`@sentry/nextjs`) inits in `src/instrumentation-client.ts`, `src/sentry.server.config.ts`, and `src/sentry.edge.config.ts`. `src/instrumentation.ts` registers the server/edge SDK and `onRequestError`. Root layout crashes go through `src/app/global-error.tsx`. Client events tunnel via `/monitoring`. Set `NEXT_PUBLIC_SENTRY_DSN` (and `SENTRY_DSN`) in `web/.env`; omit them and the SDK no-ops.
+See `web/.env.example`. Drizzle kit loads `web/.env` then `web/.env.local` (`web/drizzle.config.ts`). Optional `FINANCIAL_DATASETS_API_KEY` is for portfolio snapshots only. Optional `PORTFOLIO_QUOTE_STUB` (`MSFT:400,AAPL:180`) fills last prices when the FD key is empty or the live snapshot misses. Do not blank a live FD key to use the stub. Sentry (`@sentry/nextjs`) is documented in [SENTRY.md](SENTRY.md). Empty DSN: SDK no-ops.

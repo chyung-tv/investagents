@@ -1,12 +1,6 @@
-import {
-  handleAuthProxyRequest,
-  parseSessionData,
-} from "@neondatabase/auth/server";
 import { eq } from "drizzle-orm";
-import { headers } from "next/headers";
 import { cache } from "react";
-import { auth } from "@/lib/auth/server";
-import { readSessionWithFallback } from "@/lib/auth/session-read";
+import { rscAuth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { HANDLE_RE, isReservedHandle } from "@/lib/agent-id";
 import { users } from "@/lib/schema";
@@ -96,58 +90,19 @@ export async function ensureForumUser(input: {
   };
 }
 
-type AuthSessionUser = {
-  id?: unknown;
-  name?: string | null;
-  email?: string | null;
-  image?: string | null;
-};
-
-type AuthSessionPayload = {
-  user?: AuthSessionUser | null;
-} | null;
-
-async function requestFromIncomingHeaders(): Promise<Request> {
-  const headerStore = await headers();
-  const requestHeaders = new Headers();
-  for (const name of ["cookie", "origin", "referer", "user-agent"] as const) {
-    const value = headerStore.get(name);
-    if (value) requestHeaders.set(name, value);
-  }
-  return new Request("http://forum.invalid/api/auth/get-session", {
-    method: "GET",
-    headers: requestHeaders,
-  });
-}
-
-async function readAuthSessionWithoutCookieWrite(): Promise<AuthSessionPayload> {
-  const baseUrl = process.env.NEON_AUTH_BASE_URL;
-  const cookieSecret = process.env.NEON_AUTH_COOKIE_SECRET;
-  if (!baseUrl || !cookieSecret) return null;
-  const response = await handleAuthProxyRequest({
-    request: await requestFromIncomingHeaders(),
-    path: "get-session",
-    baseUrl,
-    cookieSecret,
-    sameSite: "lax",
-  });
-  if (!response.ok) return null;
-  const json: unknown = await response.json().catch(() => null);
-  const parsed = parseSessionData(json);
-  return parsed.user ? parsed : null;
-}
-
-async function readAuthSession(): Promise<AuthSessionPayload> {
-  return readSessionWithFallback(async () => {
-    const { data } = await auth.getSession();
+async function readNeonAuthSession() {
+  try {
+    const { data } = await rscAuth.getSession();
     return data;
-  }, readAuthSessionWithoutCookieWrite);
+  } catch {
+    return null;
+  }
 }
 
 export const getForumSession = cache(async function getForumSession(): Promise<{
   user: ForumUser;
 } | null> {
-  const session = await readAuthSession();
+  const session = await readNeonAuthSession();
   if (!session?.user?.id) return null;
   const user = await ensureForumUser({
     id: String(session.user.id),
