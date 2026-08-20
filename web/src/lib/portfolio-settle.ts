@@ -1,55 +1,137 @@
-export const STARTING_CASH = 1_000_000;
+export const MOTION_EXTEND_MS = 24 * 60 * 60 * 1000;
+export const MOTION_CLOSE_MS = 36 * 60 * 60 * 1000;
+export const STARTING_CASH = 10_000;
 
-export type MotionSide = "buy" | "sell";
+export type VoteChoice = "buy" | "hold" | "sell";
+export type MotionOutcome = "buy" | "hold" | "sell" | "hold_no_quorum";
 
-export function voteThreshold(enabledAgents: number): number {
-  if (enabledAgents <= 0) return 1;
-  return Math.min(enabledAgents, Math.max(3, Math.ceil(enabledAgents / 2)));
-}
+export type SideCounts = {
+  buy: number;
+  hold: number;
+  sell: number;
+};
 
-export function parseSide(value: string | null | undefined): MotionSide | null {
-  if (value === "buy" || value === "sell") return value;
+export type VoteTicket = {
+  choice: VoteChoice;
+  qty: number | null;
+  limit: number | null;
+};
+
+export function parseChoice(value: string | null | undefined): VoteChoice | null {
+  if (value === "buy" || value === "hold" || value === "sell") return value;
   return null;
 }
 
-export function parseShares(raw: number | null | undefined): number | null {
-  if (raw == null || !Number.isFinite(raw) || raw <= 0) return null;
-  const n = Math.floor(raw);
-  if (n < 1 || n > 1_000_000) return null;
-  return n;
+export function trimmedMean(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const drop = Math.floor(sorted.length * 0.25);
+  const sliced = sorted.slice(drop, sorted.length - drop);
+  const part = sliced.length > 0 ? sliced : sorted;
+  const sum = part.reduce((total, n) => total + n, 0);
+  return sum / part.length;
 }
 
-export function parsePrice(raw: number | null | undefined): number | null {
-  if (raw == null || !Number.isFinite(raw) || raw <= 0) return null;
-  return Math.round(raw * 10_000) / 10_000;
+export function pickSide(counts: SideCounts): {
+  side: VoteChoice;
+  outcome: MotionOutcome;
+} {
+  const total = counts.buy + counts.hold + counts.sell;
+  if (total === 0) return { side: "hold", outcome: "hold_no_quorum" };
+  const entries: [VoteChoice, number][] = [
+    ["buy", counts.buy],
+    ["hold", counts.hold],
+    ["sell", counts.sell],
+  ];
+  entries.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const leader = entries[0];
+  const runner = entries[1];
+  if (!leader || !runner) return { side: "hold", outcome: "hold_no_quorum" };
+  const share = leader[1] / total;
+  if (share > 0.5) return { side: leader[0], outcome: leader[0] };
+  if (share >= 0.4 && leader[1] > runner[1]) {
+    return { side: leader[0], outcome: leader[0] };
+  }
+  return { side: "hold", outcome: "hold_no_quorum" };
 }
 
-export type FillCheck = { ok: true } | { ok: false; reason: string };
+export function tallyVotes(votes: VoteTicket[]): SideCounts {
+  const counts: SideCounts = { buy: 0, hold: 0, sell: 0 };
+  for (const vote of votes) counts[vote.choice] += 1;
+  return counts;
+}
 
-export function canFill(input: {
-  side: MotionSide;
-  shares: number;
+export function sideTickets(votes: VoteTicket[], side: VoteChoice): VoteTicket[] {
+  return votes.filter((vote) => vote.choice === side);
+}
+
+export function roundQty(mean: number | null, n: number): number {
+  if (mean == null || n <= 0) return 0;
+  const rounded = Math.round(mean);
+  if (rounded === 0) return 1;
+  return rounded;
+}
+
+export function shouldNotify(now: Date, extendAt: Date, extendedAt: Date | null): boolean {
+  return !extendedAt && now.getTime() >= extendAt.getTime();
+}
+
+export function shouldSettle(now: Date, closeAt: Date, status: string): boolean {
+  return status === "open" && now.getTime() >= closeAt.getTime();
+}
+
+export function motionDeadlines(openedAt: Date): { extendAt: Date; closeAt: Date } {
+  return {
+    extendAt: new Date(openedAt.getTime() + MOTION_EXTEND_MS),
+    closeAt: new Date(openedAt.getTime() + MOTION_CLOSE_MS),
+  };
+}
+
+export type FillPlan = {
+  qty: number;
   price: number;
+};
+
+export type LedgerKind = "seed" | "buy" | "sell" | "no_fill";
+
+export function cashDeltaForFill(side: "buy" | "sell", qty: number, price: number): number {
+  const cost = qty * price;
+  return side === "buy" ? -cost : cost;
+}
+
+export function sameVoteTicket(
+  a: { choice: VoteChoice; qty: number | null; limit: number | null },
+  b: { choice: VoteChoice; qty: number | null; limit: number | null },
+): boolean {
+  return a.choice === b.choice && a.qty === b.qty && a.limit === b.limit;
+}
+
+export function planFill(input: {
+  side: VoteChoice;
+  outcome: MotionOutcome;
+  qtyMean: number | null;
+  limitMean: number | null;
+  voteN: number;
+  last: number | null;
   cash: number;
-  held: number;
-}): FillCheck {
-  if (input.shares < 1 || input.price <= 0) {
-    return { ok: false, reason: "Bad size." };
-  }
+  shares: number;
+}): FillPlan | null {
+  if (input.side === "hold" || input.outcome === "hold_no_quorum") return null;
+  if (input.last == null || input.last <= 0) return null;
+  let qty = roundQty(input.qtyMean, input.voteN);
   if (input.side === "buy") {
-    if (input.shares * input.price > input.cash) {
-      return { ok: false, reason: "Not enough cash." };
-    }
-    return { ok: true };
+    if (input.limitMean == null || input.last > input.limitMean) return null;
+    qty = Math.min(qty, Math.floor(input.cash / input.last));
+    if (qty < 1) return null;
+    return { qty, price: input.last };
   }
-  if (input.shares > input.held) {
-    return { ok: false, reason: "Not enough shares." };
-  }
-  return { ok: true };
+  qty = Math.min(qty, Math.max(0, Math.floor(input.shares)));
+  if (qty < 1) return null;
+  return { qty, price: input.last };
 }
 
 export function applyFill(input: {
-  side: MotionSide;
+  side: "buy" | "sell";
   qty: number;
   price: number;
   cash: number;
@@ -60,7 +142,9 @@ export function applyFill(input: {
     const cost = input.qty * input.price;
     const nextShares = input.shares + input.qty;
     const nextAvg =
-      nextShares === 0 ? 0 : (input.shares * input.avgCost + cost) / nextShares;
+      nextShares === 0
+        ? 0
+        : (input.shares * input.avgCost + cost) / nextShares;
     return {
       cash: input.cash - cost,
       shares: nextShares,
@@ -84,40 +168,10 @@ export function moneyText(value: number, digits = 2): string {
   return value.toFixed(digits);
 }
 
-export type MotionDraft = {
-  side: MotionSide;
-  ticker?: string | null;
-  shares: number;
-  price: number;
-};
-
-export function parseMotionDraft(raw: unknown): MotionDraft | null {
-  if (raw == null || raw === "") return null;
-  if (typeof raw !== "object" || Array.isArray(raw)) {
-    throw new Error("Motion must be an object.");
+export function navValue(cash: number, positions: { shares: number; last: number | null }[]): number {
+  let total = cash;
+  for (const row of positions) {
+    if (row.last != null) total += row.shares * row.last;
   }
-  const blank = (value: unknown) => value == null || String(value).trim() === "";
-  const sideRaw = Reflect.get(raw, "side");
-  const sharesRaw = Reflect.get(raw, "shares");
-  const priceRaw = Reflect.get(raw, "price");
-  if (blank(sideRaw) && blank(sharesRaw) && blank(priceRaw)) return null;
-  const side = parseSide(String(sideRaw ?? ""));
-  if (!side) throw new Error("Motion side is buy or sell.");
-  const shares = parseShares(
-    typeof sharesRaw === "number" ? sharesRaw : Number(sharesRaw),
-  );
-  const price = parsePrice(
-    typeof priceRaw === "number" ? priceRaw : Number(priceRaw),
-  );
-  if (shares == null) throw new Error("Motions need whole shares.");
-  if (price == null) throw new Error("Motions need a price.");
-  const tickerRaw = String(Reflect.get(raw, "ticker") ?? "")
-    .trim()
-    .toUpperCase();
-  return {
-    side,
-    shares,
-    price,
-    ticker: tickerRaw ? tickerRaw.slice(0, 8) : null,
-  };
+  return total;
 }

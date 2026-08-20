@@ -16,7 +16,10 @@ import { loadAgentRunView } from "@/lib/agent-run";
 import { getForumSession } from "@/lib/auth/session";
 import { inferBoard, parseBoard, sourcesFromForm } from "@/lib/forum";
 import { createThread, reactPost, reply } from "@/lib/forum-write";
-import { parseMotionDraft } from "@/lib/portfolio-settle";
+import { parseChoice } from "@/lib/portfolio-settle";
+import { castVote, markNotificationsRead, openMotion } from "@/lib/portfolio-write";
+import { listPortfolioNotices } from "@/lib/portfolio";
+import { fill } from "@/i18n/dictionary";
 import { getMessages } from "@/i18n/get-locale";
 import { adminHref } from "@/lib/admin-href";
 import { enqueueManualTick, getAgent, listInbox } from "@/lib/queries";
@@ -44,17 +47,52 @@ async function requireAdmin(): Promise<void> {
 
 export async function listInboxAction() {
   const userId = await requireHuman();
-  const { dict } = await getMessages();
-  const inbox = await listInbox(userId);
-  return inbox.map((item) => ({
-    id: `inbox:${item.threadId}`,
-    href: `/t/${item.threadId}`,
-    label: formatInboxLabel(item, dict),
-  }));
+  const [{ dict }, inbox, notices] = await Promise.all([
+    getMessages(),
+    listInbox(userId),
+    listPortfolioNotices(userId),
+  ]);
+  const items: { id: string; href: string; label: string }[] = [];
+  for (const notice of notices) {
+    const outcome = String(notice.payload.outcome ?? "");
+    const tally = notice.payload.tally as
+      | { buy?: number; hold?: number; sell?: number }
+      | undefined;
+    const outcomeLabel =
+      outcome === "buy"
+        ? dict.portfolio.outcomeBuy
+        : outcome === "sell"
+          ? dict.portfolio.outcomeSell
+          : outcome === "hold"
+            ? dict.portfolio.outcomeHold
+            : dict.portfolio.outcomeHoldNo;
+    const label =
+      notice.kind === "portfolio_tally"
+        ? fill(dict.portfolio.tallyNotice, {
+            ticker: notice.ticker,
+            buy: tally?.buy ?? 0,
+            hold: tally?.hold ?? 0,
+            sell: tally?.sell ?? 0,
+          })
+        : fill(dict.portfolio.settledNotice, {
+            ticker: notice.ticker,
+            outcome: outcomeLabel,
+          });
+    items.push({ id: notice.id, href: notice.href, label });
+  }
+  for (const item of inbox) {
+    items.push({
+      id: `inbox:${item.threadId}`,
+      href: `/t/${item.threadId}`,
+      label: formatInboxLabel(item, dict),
+    });
+  }
+  return items;
 }
 
-export async function markNoticeReadAction(_id: string) {
-  await requireHuman();
+export async function markNoticeReadAction(id: string) {
+  const userId = await requireHuman();
+  if (!id.startsWith("inbox:")) await markNotificationsRead(userId, [id]);
 }
 
 function agentAdminPath(agentId: string, created = false) {
@@ -72,12 +110,23 @@ export async function createThreadAction(formData: FormData) {
     ticker,
     title,
   });
-  const motion = parseMotionDraft({
-    side: String(formData.get("motionSide") ?? ""),
-    shares: String(formData.get("motionShares") ?? ""),
-    price: String(formData.get("motionPrice") ?? ""),
-    ticker,
-  });
+  if (board === "motions") {
+    const choice = parseChoice(String(formData.get("choice") ?? ""));
+    if (!choice) throw new Error("Buy, hold, or sell.");
+    const qtyRaw = String(formData.get("qty") ?? "");
+    const limitRaw = String(formData.get("limit") ?? "");
+    const { threadId } = await openMotion({
+      userId,
+      title,
+      body,
+      ticker: ticker ?? "",
+      choice,
+      qty: qtyRaw ? Number(qtyRaw) : null,
+      limit: limitRaw ? Number(limitRaw) : null,
+      sources: sourcesFromForm(formData),
+    });
+    redirect(`/t/${threadId}`);
+  }
   const { threadId } = await createThread({
     userId,
     title,
@@ -85,9 +134,26 @@ export async function createThreadAction(formData: FormData) {
     ticker,
     board,
     sources: sourcesFromForm(formData),
-    motion,
   });
   redirect(`/t/${threadId}`);
+}
+
+export async function voteMotionAction(formData: FormData) {
+  const userId = await requireHuman();
+  const motionId = String(formData.get("motionId") ?? "").trim();
+  const choice = parseChoice(String(formData.get("choice") ?? ""));
+  if (!choice) throw new Error("Buy, hold, or sell.");
+  const qtyRaw = String(formData.get("qty") ?? "");
+  const limitRaw = String(formData.get("limit") ?? "");
+  const result = await castVote({
+    userId,
+    motionId,
+    choice,
+    qty: qtyRaw ? Number(qtyRaw) : null,
+    limit: limitRaw ? Number(limitRaw) : null,
+  });
+  revalidatePath("/portfolio");
+  revalidatePath(`/t/${result.threadId}`);
 }
 
 export async function replyAction(formData: FormData) {

@@ -1,12 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "./db";
 import { inferBoard, parseSources, quoteSnippet } from "./forum";
-import {
-  assertMotionCanOpen,
-  attachMotion,
-  maybeSettleMotion,
-  type MotionDraft,
-} from "./portfolio-write";
 import { agentThreadReads, postReactions, posts, threads } from "./schema";
 
 export async function createThread(input: {
@@ -16,28 +10,27 @@ export async function createThread(input: {
   ticker?: string | null;
   board?: string | null;
   sources?: unknown;
-  motion?: MotionDraft | null;
+  allowMotionsBoard?: boolean;
 }): Promise<{ threadId: string; postId: string }> {
   const title = input.title.trim();
   const body = input.body.trim();
   if (!title || !body) {
     throw new Error("Title and post are required.");
   }
-  const tickerRaw = (input.ticker ?? input.motion?.ticker ?? "").trim().toUpperCase();
+  const tickerRaw = (input.ticker ?? "").trim().toUpperCase();
   const ticker = tickerRaw ? tickerRaw.slice(0, 8) : null;
   const board = inferBoard({
     board: input.board,
     ticker,
     title,
   });
-  const sources = parseSources(input.sources);
-  if (input.motion) {
-    await assertMotionCanOpen({
-      board,
-      ticker,
-      motion: input.motion,
-    });
+  if (board === "motions" && !input.allowMotionsBoard) {
+    throw new Error("Open a motion with propose_motion or the motions form.");
   }
+  if (board === "motions" && !ticker) {
+    throw new Error("Motions need a ticker.");
+  }
+  const sources = parseSources(input.sources);
   const [thread] = await db
     .insert(threads)
     .values({
@@ -56,17 +49,6 @@ export async function createThread(input: {
       sources,
     })
     .returning({ id: posts.id });
-  if (input.motion) {
-    await attachMotion({
-      userId: input.userId,
-      threadId: thread.id,
-      postId: post.id,
-      title,
-      board,
-      ticker,
-      motion: input.motion,
-    });
-  }
   await followThread(input.userId, thread.id);
   return { threadId: thread.id, postId: post.id };
 }
@@ -168,7 +150,6 @@ export async function reactPost(input: {
       value: input.value,
     });
   }
-  await maybeSettleMotion(postId);
   return { value: input.value, threadId: post.threadId };
 }
 

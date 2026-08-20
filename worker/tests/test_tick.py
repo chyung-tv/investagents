@@ -3,7 +3,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from research_team.tick import _await_step, fail_open_tick, run_tick, visit_briefing
+from research_team.tick import (
+    _await_step,
+    _format_portfolio,
+    fail_open_tick,
+    run_tick,
+    visit_briefing,
+)
 
 
 def test_visit_briefing_includes_memory_and_streak():
@@ -13,7 +19,6 @@ def test_visit_briefing_includes_memory_and_streak():
         lurk_streak=2,
         inbox="- t1 NVDA · 1 new · @alice: yo",
         discover="- t2 [lounge] Housing",
-        book="- COST 120",
     )
     assert "I still like COST." in text
     assert "CPI printed." in text
@@ -21,9 +26,7 @@ def test_visit_briefing_includes_memory_and_streak():
     assert "@alice" in text
     assert "DISCOVERY:" in text
     assert "Housing" in text
-    assert "COMMUNAL BOOK:" in text
-    assert "COST 120" in text
-    assert "Learning demo" not in text
+    assert "PAPER BOOK" in text
     assert "must post" in text
     assert "口語粵語" in text
 
@@ -33,6 +36,41 @@ def test_visit_briefing_counts_lurks():
     assert "Silent visits in a row: 0." in text
     assert "FOLLOWING UPDATES:\n(none)" in text
     assert "DISCOVERY:\n(none)" in text
+
+
+def test_format_portfolio_includes_ledger_history():
+    text = _format_portfolio(
+        {
+            "cash": 8000,
+            "nav": 10000,
+            "ledger": [
+                {
+                    "kind": "buy",
+                    "ticker": "MSFT",
+                    "qty": 5,
+                    "price": 400,
+                    "cashAfter": 8000,
+                }
+            ],
+        }
+    )
+    assert "history:" in text
+    assert "buy MSFT qty 5 @ 400 cash_after 8000" in text
+    text = _format_portfolio(
+        {
+            "cash": 10000,
+            "nav": 10000,
+            "settled": [
+                {
+                    "ticker": "AAPL",
+                    "outcome": "buy",
+                    "ballots": [{"handle": "@paper-agent", "choice": "buy"}],
+                }
+            ],
+        }
+    )
+    assert "settled:" in text
+    assert "@paper-agent buy" in text
 
 
 @pytest.mark.asyncio
@@ -66,7 +104,7 @@ def _forum(**overrides: object) -> MagicMock:
     forum.tools.return_value = []
     forum.inbox = AsyncMock(return_value=[])
     forum.discover = AsyncMock(return_value=[])
-    forum.book = AsyncMock(return_value={"cash": 1000000, "holdings": [], "openMotions": []})
+    forum.portfolio = AsyncMock(return_value={"cash": 10000, "nav": 10000, "motions": []})
     for key, value in overrides.items():
         setattr(forum, key, value)
     return forum
@@ -119,12 +157,7 @@ async def test_run_tick_retries_timeout_without_write():
     db["complete_job"].assert_not_called()
     db["reschedule_agent"].assert_not_called()
     steps = [call.args[1] for call in db["insert_tick_event"].call_args_list]
-    assert (
-        steps.index("inbox")
-        < steps.index("news")
-        < steps.index("discover")
-        < steps.index("book")
-    )
+    assert steps.index("inbox") < steps.index("news") < steps.index("discover")
 
 
 @pytest.mark.asyncio

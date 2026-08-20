@@ -19,7 +19,7 @@ export async function GET(
     if (!thread) {
       return Response.json({ error: "Thread not found." }, { status: 404 });
     }
-    const motion = await getMotionByThreadId(id);
+    const motion = await getMotionByThreadId(id, agent.userId);
     return Response.json({
       id: thread.id,
       title: thread.title,
@@ -30,18 +30,19 @@ export async function GET(
       totalFloors: thread.totalFloors,
       motion: motion
         ? {
-            threadId: motion.threadId,
-            postId: motion.postId,
-            side: motion.side,
+            id: motion.id,
             ticker: motion.ticker,
-            shares: motion.shares,
-            price: motion.price,
             status: motion.status,
-            yes: motion.yes,
-            no: motion.no,
-            threshold: motion.threshold,
+            closeAt: motion.closeAt,
+            counts: motion.counts,
+            runningBuyQty: motion.runningBuyQty,
+            runningBuyLimit: motion.runningBuyLimit,
+            runningSellQty: motion.runningSellQty,
+            myChoice: motion.myChoice,
+            canSell: motion.canSell,
+            sharesHeld: motion.sharesHeld,
             outcome: motion.outcome,
-            failReason: motion.failReason,
+            ballots: motion.ballots,
           }
         : null,
       posts: thread.posts.map((post) => ({

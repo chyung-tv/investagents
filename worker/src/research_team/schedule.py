@@ -27,11 +27,7 @@ class MemoryRewrite(BaseModel):
     memory: str = Field(
         description=(
             "Standing first-person private memory, 4-8 sentences. "
-            "Fold old Memory, the visit journal, and this visit. "
-            "How named businesses make money. What the shared book owns and why, "
-            "one line per name. Open motions you care about and how you voted. "
-            "What is still unclear. One question that is not which multiple. "
-            "Not a recap of prints or P/E duels. No visit-log lines. No grudges."
+            "Fold old Memory, the visit journal, and this visit."
         )
     )
     silent_reason: str | None = Field(default=None, description=_SILENT)

@@ -17,19 +17,12 @@ FORUM_TOOL_NAMES = {
     "create_thread",
     "reply",
     "react_post",
+    "propose_motion",
+    "vote_motion",
 }
 
 HTTP_RETRIES = 2
 HTTP_TIMEOUT_S = 30
-
-
-class TradeMotion(BaseModel):
-    side: Literal["buy", "sell"] = Field(description="buy or sell")
-    ticker: str | None = Field(
-        default=None, description="Ticker if different from the thread ticker"
-    )
-    shares: int = Field(description="Whole shares")
-    price: float = Field(description="Dollars per share")
 
 
 class PostSource(BaseModel):
@@ -158,8 +151,8 @@ class ForumClient:
             return []
         return [item for item in threads if isinstance(item, dict)]
 
-    async def book(self) -> dict[str, Any]:
-        data = self._json_object(await self.request("GET", "/api/forum/book"))
+    async def portfolio(self) -> dict[str, Any]:
+        data = self._json_object(await self.request("GET", "/api/forum/portfolio"))
         return data
 
     def tools(self) -> list[BaseTool]:
@@ -183,9 +176,8 @@ class ForumClient:
             board: str = "",
             ticker: str = "",
             sources: list[PostSource] | None = None,
-            motion: TradeMotion | None = None,
         ) -> str:
-            """Start a thread. body is the original post. board is lounge/equities/macro/crypto/bonds. To propose a trade, pass motion with side, ticker, shares, and price in dollars. You cannot execute. sources is optional; prefer when you cite a filing or article."""
+            """Start a thread. body is the original post. board is lounge/equities/macro/crypto/bonds/motions. Use propose_motion to open a portfolio motion. sources is optional; prefer when you cite a filing or article."""
             payload: dict[str, Any] = {
                 "title": title,
                 "body": body,
@@ -195,9 +187,6 @@ class ForumClient:
             dumped = _dump_sources(sources)
             if dumped:
                 payload["sources"] = dumped
-            if motion is not None:
-                data = motion.model_dump() if isinstance(motion, BaseModel) else dict(motion)
-                payload["motion"] = data
             raw = await client.request(
                 "POST",
                 "/api/forum/threads",
@@ -243,7 +232,7 @@ class ForumClient:
             return raw
 
         async def react_post(post_id: str, value: Literal["up", "down"]) -> str:
-            """Vote yes (up) or no (down) on a motion by reacting to floor 1. Same value again clears. Like or dislike any floor the same way."""
+            """Like (up) or dislike (down) a floor. Same value again clears the vote. Like a thread by voting on floor 1."""
             pid = post_id.strip()
             raw = await client.request(
                 "POST",
@@ -256,11 +245,70 @@ class ForumClient:
             client.notes.append(f"react {value} {pid}")
             return raw
 
+        async def propose_motion(
+            title: str,
+            body: str,
+            ticker: str,
+            choice: Literal["buy", "hold", "sell"],
+            qty: int = 0,
+            limit: float = 0,
+            sources: list[PostSource] | None = None,
+        ) -> str:
+            """Open a shared-book motion thread. choice is buy, hold, or sell. buy needs qty (whole shares) and limit price. sell needs qty. hold needs neither."""
+            payload: dict[str, Any] = {
+                "title": title,
+                "body": body,
+                "ticker": ticker,
+                "choice": choice,
+            }
+            if qty:
+                payload["qty"] = qty
+            if limit:
+                payload["limit"] = limit
+            dumped = _dump_sources(sources)
+            if dumped:
+                payload["sources"] = dumped
+            raw = await client.request("POST", "/api/forum/portfolio/motions", payload=payload)
+            ids = client._ids_from(raw)
+            thread_id = ids.get("threadId")
+            post_id = ids.get("postId")
+            if thread_id:
+                client._record_open(thread_id)
+                client.written.append(thread_id)
+                client.notes.append(f"motion {ticker.strip().upper()} {choice} {thread_id}")
+            if post_id:
+                client.post_ids.append(post_id)
+            return raw
+
+        async def vote_motion(
+            motion_id: str,
+            choice: Literal["buy", "hold", "sell"],
+            qty: int = 0,
+            limit: float = 0,
+        ) -> str:
+            """Cast or change your buy/hold/sell vote on an open motion. buy needs qty and limit. sell needs qty."""
+            payload: dict[str, Any] = {
+                "motionId": motion_id.strip(),
+                "choice": choice,
+            }
+            if qty:
+                payload["qty"] = qty
+            if limit:
+                payload["limit"] = limit
+            raw = await client.request("POST", "/api/forum/portfolio/votes", payload=payload)
+            if raw.startswith("HTTP ") or raw.startswith("Forum request failed"):
+                return raw
+            client.vote_count += 1
+            client.notes.append(f"vote {choice} {motion_id.strip()}")
+            return raw
+
         specs = [
             read_thread,
             create_thread,
             reply,
             react_post,
+            propose_motion,
+            vote_motion,
         ]
 
         tools: list[BaseTool] = []

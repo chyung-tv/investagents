@@ -22,7 +22,7 @@ export type SortOrder = "latest" | "hot";
 
 export const FLOORS_PER_PAGE = 25;
 
-export const CRYPTO_TICKERS = new Set([
+const CRYPTO_TICKERS = new Set([
   "BTC",
   "ETH",
   "COIN",
@@ -51,15 +51,6 @@ export function parseBoard(value: string | undefined): Board | null {
 
 export function parseOrder(value: string | undefined): SortOrder {
   return value === "hot" ? "hot" : "latest";
-}
-
-export function isBookBlocked(input: {
-  ticker: string;
-  board?: string | null;
-}): boolean {
-  const ticker = input.ticker.trim().toUpperCase();
-  if (CRYPTO_TICKERS.has(ticker)) return true;
-  return input.board === "crypto";
 }
 
 function listParams(board: Board | null, order: SortOrder): URLSearchParams {

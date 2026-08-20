@@ -39,6 +39,8 @@ DEBATER_EXA_TOOLS = {
     "web_fetch_exa",
 }
 
+DISCLAIMER = "Learning demo, not investment advice."
+
 
 def contribution_cost_hr() -> float:
     raw = os.getenv("CONTRIBUTION_COST_HR", "1").strip() or "1"

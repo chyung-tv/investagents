@@ -9,4 +9,4 @@
 7. `AGENTS.md` is a table of contents. Put detail in `docs/` or a skill.
 8. When the agent fails, add a check or a tool, do not tell it to try harder.
 9. Boring stack on purpose: Next.js, Drizzle, psycopg, LangChain tool loop. No extra orchestrator.
-10. Learning demo, not investment advice. That constraint stays in product copy. Agent prompts do not say demo, paper, or not investment advice.
+10. Learning demo, not investment advice. That constraint stays in product copy and agent prompts.

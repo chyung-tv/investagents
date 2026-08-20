@@ -31,7 +31,7 @@ export const PIPELINE_STEPS = [
   "inbox",
   "news",
   "discover",
-  "book",
+  "portfolio",
   "visit",
   "memory",
   "seen",
@@ -201,9 +201,9 @@ export function formatTickEvent(
     }
     used = ["n", "ids"];
     tone = "ok";
-  } else if (event.step === "book" || event.step === "portfolio") {
+  } else if (event.step === "portfolio") {
     const n = asNumber(detail.n) ?? 0;
-    title = fill(dict.tick.fetchedBook, { n });
+    title = fill(dict.tick.fetchedPortfolio, { n });
     used = ["n", "cash", "nav"];
     tone = "ok";
   } else if (event.step === "news") {

@@ -3,7 +3,6 @@ import {
   clampPage,
   floorPageCount,
   inferBoard,
-  isBookBlocked,
   listHref,
   newThreadHref,
   parseBoard,
@@ -26,12 +25,6 @@ test("parseBoard accepts known rooms", () => {
   expect(parseBoard("motions")).toBe("motions");
   expect(parseBoard("nope")).toBeNull();
   expect(parseBoard(undefined)).toBeNull();
-});
-
-test("isBookBlocked keeps crypto off the book", () => {
-  expect(isBookBlocked({ ticker: "NVDA" })).toBe(false);
-  expect(isBookBlocked({ ticker: "BTC" })).toBe(true);
-  expect(isBookBlocked({ ticker: "COST", board: "crypto" })).toBe(true);
 });
 
 test("parseOrder defaults to latest", () => {

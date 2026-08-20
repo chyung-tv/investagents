@@ -8,6 +8,7 @@ from typing import Any
 
 from research_team.agents import end_visit, run_visit
 from research_team.config import (
+    DISCLAIMER,
     LLM_TIMEOUT_S,
     MCP_TIMEOUT_S,
     VISIT_TIMEOUT_S,
@@ -141,44 +142,65 @@ def _format_inbox(items: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def _format_book(data: dict[str, Any]) -> str:
+def _format_portfolio(data: dict[str, Any]) -> str:
     if not data:
         return "(none)"
     cash = data.get("cash")
-    lines = [f"Cash: {cash}"]
-    holdings = data.get("holdings")
-    if isinstance(holdings, list) and holdings:
-        lines.append("Holdings:")
-        for item in holdings:
+    nav = data.get("nav")
+    lines = [f"cash {cash} · NAV {nav}"]
+    positions = data.get("positions")
+    if isinstance(positions, list):
+        for item in positions:
             if not isinstance(item, dict):
                 continue
             ticker = str(item.get("ticker") or "")
             shares = item.get("shares")
-            thesis = str(item.get("thesis") or "").replace("\n", " ")[:80]
-            extra = f" {thesis}" if thesis else ""
-            lines.append(f"- {ticker} {shares}{extra}")
-    else:
-        lines.append("Holdings: (none)")
-    motions = data.get("openMotions")
-    if isinstance(motions, list) and motions:
-        lines.append("Open motions:")
+            last = item.get("last")
+            lines.append(f"- pos {ticker} {shares} @ {last}")
+    motions = data.get("motions")
+    if isinstance(motions, list):
         for item in motions:
             if not isinstance(item, dict):
                 continue
-            tid = str(item.get("threadId") or "")
-            post_id = str(item.get("postId") or "")
             ticker = str(item.get("ticker") or "")
-            side = str(item.get("side") or "")
-            shares = item.get("shares")
-            price = item.get("price")
-            yes = item.get("yes")
-            need = item.get("threshold")
+            mid = str(item.get("id") or "")
+            tid = str(item.get("threadId") or "")
+            counts = item.get("counts") if isinstance(item.get("counts"), dict) else {}
             lines.append(
-                f"- {tid} floor1 {post_id} {side} {ticker} {shares} @ {price} "
-                f"yes {yes}/{need}"
+                f"- motion {mid} {ticker} thread {tid} "
+                f"buy {counts.get('buy', 0)} hold {counts.get('hold', 0)} "
+                f"sell {counts.get('sell', 0)} close {item.get('closeAt')}"
             )
-    else:
-        lines.append("Open motions: (none)")
+    ledger = data.get("ledger")
+    if isinstance(ledger, list) and ledger:
+        lines.append("history:")
+        for item in ledger[:8]:
+            if not isinstance(item, dict):
+                continue
+            kind = str(item.get("kind") or "")
+            ticker = str(item.get("ticker") or "")
+            qty = item.get("qty")
+            price = item.get("price")
+            cash_after = item.get("cashAfter")
+            lines.append(
+                f"- {kind} {ticker} qty {qty} @ {price} cash_after {cash_after}"
+            )
+    settled = data.get("settled")
+    if isinstance(settled, list) and settled:
+        lines.append("settled:")
+        for item in settled[:5]:
+            if not isinstance(item, dict):
+                continue
+            ticker = str(item.get("ticker") or "")
+            outcome = str(item.get("outcome") or "")
+            ballots = item.get("ballots") if isinstance(item.get("ballots"), list) else []
+            names = []
+            for ballot in ballots[:6]:
+                if not isinstance(ballot, dict):
+                    continue
+                names.append(f"{ballot.get('handle')} {ballot.get('choice')}")
+            extra = ", ".join(names) if names else "none"
+            lines.append(f"- {ticker} {outcome} · {extra}")
     return "\n".join(lines)
 
 
@@ -203,7 +225,7 @@ def visit_briefing(
     lurk_streak: int,
     inbox: str = "",
     discover: str = "",
-    book: str = "",
+    portfolio: str = "",
 ) -> str:
     lurk = (
         "You already lurked twice. You must post this visit."
@@ -215,9 +237,10 @@ def visit_briefing(
         f"FOLLOWING UPDATES:\n{inbox or '(none)'}\n\n"
         f"MARKET NEWS:\n{news or '(none)'}\n\n"
         f"DISCOVERY:\n{discover or '(none)'}\n\n"
-        f"COMMUNAL BOOK:\n{book or '(none)'}\n\n"
+        f"PAPER BOOK (shared, not real money):\n{portfolio or '(none)'}\n\n"
         f"{lurk}\n"
         "Write the notebook and any public posts in Hong Kong Cantonese (口語粵語).\n"
+        f"{DISCLAIMER}"
     )
 
 
@@ -276,12 +299,12 @@ async def run_tick(job: dict[str, Any]) -> None:
             if isinstance(item.get("id"), str) and item.get("id")
         ]
         _emit(job["id"], "discover", {"n": len(discover_items), "ids": discover_ids})
-        book = await forum.book()
-        motions = book.get("openMotions") if isinstance(book.get("openMotions"), list) else []
+        book = await forum.portfolio()
+        motions = book.get("motions") if isinstance(book.get("motions"), list) else []
         _emit(
             job["id"],
-            "book",
-            {"n": len(motions), "cash": book.get("cash")},
+            "portfolio",
+            {"n": len(motions), "cash": book.get("cash"), "nav": book.get("nav")},
         )
         streak = lurk_count(db.lurk_results(agent_id))
         _emit(job["id"], "visit", {"status": "started", "lurkStreak": streak})
@@ -310,7 +333,7 @@ async def run_tick(job: dict[str, Any]) -> None:
                     lurk_streak=streak,
                     inbox=_format_inbox(inbox_items),
                     discover=_format_discover(discover_items),
-                    book=_format_book(book),
+                    portfolio=_format_portfolio(book),
                 ),
                 tools=tools,
                 on_pin=on_pin,

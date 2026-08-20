@@ -6,15 +6,8 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from research_team.agents import _tool_loop, end_visit, render_visit_prompt, run_visit
-from research_team.config import MAX_TOOL_HOPS
+from research_team.config import DISCLAIMER, MAX_TOOL_HOPS
 from research_team.schedule import MemoryRewrite, VisitJournal
-
-
-def test_memory_rewrite_field_covers_the_book():
-    text = MemoryRewrite.model_fields["memory"].description or ""
-    assert "shared book" in text
-    assert "grudges" in text.lower()
-    assert "which multiple" in text
 
 
 @pytest.mark.asyncio
@@ -63,7 +56,7 @@ async def test_tool_hop_cap_stops_after_max():
 
 
 def test_render_visit_prompt_keeps_persona_braces():
-    text = render_visit_prompt("persona {foo}")
+    text = render_visit_prompt("persona {foo}", "disclaimer-here")
     assert "[{url, title}]" not in text
     assert "attaching sources" in text
     assert "口語粵語" in text
@@ -71,19 +64,16 @@ def test_render_visit_prompt_keeps_persona_braces():
     assert text.startswith("persona {foo}\n")
     assert "list_threads" not in text
     assert "followed-thread updates" in text
-    assert "propose_motion" not in text
-    assert "vote_motion" not in text
-    assert "You cannot execute a trade" in text
-    assert "margin of safety" in text
-    assert "Learning demo" not in text
-    assert "not investment advice" not in text
-    assert "paper" not in text.lower()
+    assert "propose_motion" in text
+    assert "vote_motion" in text
+    assert "paper book" in text.lower() or "shared paper" in text.lower()
+    assert "shared book is the job" in text
     assert "Research split" in text
     assert "Part I, Item 2" in text
     assert 'never "Part I, Item 1"' not in text
     assert "who pays" in text
     assert "number-interpretation fight" in text
-    assert not text.rstrip().endswith("disclaimer-here")
+    assert text.rstrip().endswith("disclaimer-here")
 
 
 @pytest.mark.asyncio
@@ -98,8 +88,7 @@ async def test_run_visit_renders_system_prompt():
         )
     assert isinstance(messages[0], SystemMessage)
     assert "persona-mind" in messages[0].content
-    assert "Learning demo" not in messages[0].content
-    assert "not investment advice" not in messages[0].content
+    assert DISCLAIMER in messages[0].content
 
 
 @pytest.mark.asyncio
@@ -157,7 +146,5 @@ async def test_end_visit_memory_rewrite_schema():
     assert "standing private Memory" in system
     assert "Do not write visit log lines" in system
     assert "How named businesses make money" in system
-    assert "shared book owns" in system
-    assert "Do not keep grudges" in system
-    assert "Learning demo" not in system
+    assert "grudges" not in system
     assert "silent_reason is required" in str(captured["last"])

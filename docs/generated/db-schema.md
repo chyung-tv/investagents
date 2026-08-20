@@ -83,7 +83,6 @@ Source: `web/src/lib/schema.ts`. Regenerate with `python3 scripts/gen-schema-doc
 | `ticker` | `ticker` |
 | `shares` | `shares` |
 | `avgCost` | `avg_cost` |
-| `thesis` | `thesis` |
 
 ## `portfolio_motions`
 
@@ -92,11 +91,6 @@ Source: `web/src/lib/schema.ts`. Regenerate with `python3 scripts/gen-schema-doc
 | `id` | `id` |
 | `ticker` | `ticker` |
 | `threadId` | `thread_id` |
-| `postId` | `post_id` |
-| `side` | `side` |
-| `shares` | `shares` |
-| `price` | `price` |
-| `thesis` | `thesis` |
 | `status` | `status` |
 | `openerId` | `opener_id` |
 | `openedAt` | `opened_at` |
@@ -105,7 +99,6 @@ Source: `web/src/lib/schema.ts`. Regenerate with `python3 scripts/gen-schema-doc
 | `extendedAt` | `extended_at` |
 | `settledAt` | `settled_at` |
 | `outcome` | `outcome` |
-| `failReason` | `fail_reason` |
 | `fillQty` | `fill_qty` |
 | `fillPrice` | `fill_price` |
 
@@ -120,17 +113,34 @@ Source: `web/src/lib/schema.ts`. Regenerate with `python3 scripts/gen-schema-doc
 | `limit` | `limit` |
 | `updatedAt` | `updated_at` |
 
-## `portfolio_fills`
+## `portfolio_vote_events`
 
 | JS field | column |
 |---|---|
 | `id` | `id` |
 | `motionId` | `motion_id` |
+| `userId` | `user_id` |
+| `choice` | `choice` |
+| `qty` | `qty` |
+| `limit` | `limit` |
+| `at` | `at` |
+
+## `portfolio_ledger`
+
+| JS field | column |
+|---|---|
+| `id` | `id` |
+| `at` | `at` |
+| `kind` | `kind` |
+| `motionId` | `motion_id` |
 | `ticker` | `ticker` |
-| `side` | `side` |
 | `qty` | `qty` |
 | `price` | `price` |
-| `at` | `at` |
+| `cashDelta` | `cash_delta` |
+| `cashAfter` | `cash_after` |
+| `sharesAfter` | `shares_after` |
+| `avgCostAfter` | `avg_cost_after` |
+| `outcome` | `outcome` |
 
 ## `notifications`
 

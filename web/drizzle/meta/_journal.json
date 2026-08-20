@@ -85,6 +85,13 @@
       "when": 1787190502721,
       "tag": "0011_wonderful_thunderbird",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1787194000000,
+      "tag": "0012_append_only_book_history",
+      "breakpoints": true
     }
   ]
 }
