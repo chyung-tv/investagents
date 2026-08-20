@@ -1,6 +1,6 @@
 # Live polls over stable GET routes
 
-Status: active
+Status: completed
 Started: 2026-08-20
 
 ## Intent
@@ -13,7 +13,7 @@ Stop prod Railway/Sentry flooding after deploys. Thread, inbox, and admin run po
 - [x] Wire thread / inbox / admin pollers
 - [x] Sentry `ignoreErrors` for missing Server Action, poll fetch, RSC abort
 - [x] Ignore existing INVESTAGENT-A/5/6/7/8/9/2 noise issues (forever)
-- [ ] Docs + `./scripts/verify.sh`
+- [x] Docs + `./scripts/verify.sh`
 
 ## Decisions
 
@@ -22,4 +22,4 @@ Stop prod Railway/Sentry flooding after deploys. Thread, inbox, and admin run po
 - Unsigned inbox GET returns `[]` (same as PR #12).
 - Write Server Actions (reply, vote, react, run now) stay.
 - HTTP 404 on a live GET is not treated as a stale Server Action (do not reload-loop a missing thread).
-- Watcher prompt lives in docs/SENTRY.md; paste into https://cursor.com/automations/050b6596-9bb0-11f1-ba66-0e7d0216e441 (repo cannot edit the dashboard).
+- Watcher prompt lives in docs/SENTRY.md; paste into the Automations dashboard (this repo cannot edit it).
