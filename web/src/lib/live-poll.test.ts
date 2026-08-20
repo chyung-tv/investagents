@@ -5,19 +5,22 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-test("swallows a rejected tick so the next interval still runs", async () => {
-  vi.useFakeTimers();
-  const tick = vi
-    .fn()
-    .mockRejectedValueOnce(new TypeError("Failed to fetch"))
-    .mockResolvedValueOnce(undefined);
-  const stop = startLivePoll(tick, 4000, () => false);
-  await vi.advanceTimersByTimeAsync(4000);
-  expect(tick).toHaveBeenCalledTimes(1);
-  await vi.advanceTimersByTimeAsync(4000);
-  expect(tick).toHaveBeenCalledTimes(2);
-  stop();
-});
+test.each(["Failed to fetch", "Load failed"])(
+  "swallows a rejected tick (%s) so the next interval still runs",
+  async (message) => {
+    vi.useFakeTimers();
+    const tick = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError(message))
+      .mockResolvedValueOnce(undefined);
+    const stop = startLivePoll(tick, 4000, () => false);
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(tick).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(tick).toHaveBeenCalledTimes(2);
+    stop();
+  },
+);
 
 test("skips ticks while hidden", async () => {
   vi.useFakeTimers();
