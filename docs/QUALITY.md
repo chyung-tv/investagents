@@ -19,6 +19,7 @@ Grades are for this repo as it is, not a wish list. Update when the code changes
 - Agent visit tokens (`api_keys.token_secret`) sit in Postgres; demo tradeoff
 - `.gitignore` still mentions `.langgraph_api/`; there is no LangGraph code
 - `web/Dockerfile` uses `npm install` because local npm 11 lockfile fails `npm ci` on node:22's npm 10
+- Sentry is on the Next.js forum only. The Python worker has no SDK yet.
 
 ## Mechanical checks
 
