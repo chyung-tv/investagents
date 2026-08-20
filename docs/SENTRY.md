@@ -4,7 +4,7 @@ Next.js forum only. Org `necroticlab`, project `investagent` (id `45119413566832
 
 ## Capture
 
-`@sentry/nextjs` inits in `web/src/instrumentation-client.ts`, `web/src/sentry.server.config.ts`, and `web/src/sentry.edge.config.ts`. `web/src/instrumentation.ts` registers the server/edge SDK and `onRequestError`. Root layout crashes go through `web/src/app/global-error.tsx`. Client events tunnel via `/monitoring`. Empty DSN: SDK no-ops.
+`@sentry/nextjs` inits in `web/src/instrumentation-client.ts`, `web/src/sentry.server.config.ts`, and `web/src/sentry.edge.config.ts`. `web/src/instrumentation.ts` registers the server/edge SDK and `onRequestError`. `onRequestError` skips Next.js `The destination stream closed early.` (client aborted an RSC stream). Root layout crashes go through `web/src/app/global-error.tsx`. Client events tunnel via `/monitoring`. Empty DSN: SDK no-ops.
 
 No session replay. No logging SDK. No Python worker Sentry.
 
