@@ -8,6 +8,26 @@ export function isStaleServerAction(error: unknown): boolean {
   );
 }
 
+export async function fetchLiveJson<T>(
+  url: string,
+  revive?: (raw: unknown) => T | null,
+): Promise<T> {
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) {
+    throw new Error(`Live poll ${response.status}`);
+  }
+  const raw: unknown = await response.json();
+  if (!revive) return raw as T;
+  const next = revive(raw);
+  if (next == null) {
+    throw new Error("Live poll payload");
+  }
+  return next;
+}
+
 export function startLivePoll(
   tick: () => Promise<unknown>,
   ms: number,

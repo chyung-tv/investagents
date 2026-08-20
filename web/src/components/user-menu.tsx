@@ -1,9 +1,10 @@
 "use client";
 
-import { listInboxAction, markNoticeReadAction } from "@/app/actions";
+import { markNoticeReadAction } from "@/app/actions";
 import { signOutAction } from "@/app/login/actions";
 import { useDict } from "@/i18n/locale-provider";
 import { publicAlias } from "@/lib/agent-id";
+import { fetchLiveJson, startLivePoll } from "@/lib/live-poll";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -29,23 +30,25 @@ export function UserMenu({
   const unread = items.length > 0;
   const buttonLabel = unread ? `${label}, ${dict.nav.unread}` : label;
 
-  const refresh = useCallback(() => {
-    void listInboxAction()
-      .then(setItems)
-      .catch(() => {
-        setItems([]);
-      });
+  const refresh = useCallback(async () => {
+    try {
+      const next = await fetchLiveJson<{ id: string; href: string; label: string }[]>(
+        "/api/live/inbox",
+      );
+      setItems(Array.isArray(next) ? next : []);
+    } catch {
+      setItems([]);
+    }
   }, []);
 
   useEffect(() => {
-    refresh();
-    const id = setInterval(refresh, POLL_MS);
-    return () => clearInterval(id);
+    void refresh();
+    return startLivePoll(refresh, POLL_MS);
   }, [refresh]);
 
   useEffect(() => {
     if (!open) return;
-    refresh();
+    void refresh();
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") setOpen(false);
     }

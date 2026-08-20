@@ -1,13 +1,13 @@
 "use client";
 
-import { loadThreadPageAction } from "@/app/(forum)/t/[id]/actions";
 import { Floor } from "@/components/floor";
 import { ReplyForm } from "@/components/reply-form";
 import { SignInLink } from "@/components/auth-modal";
 import { useDict } from "@/i18n/locale-provider";
 import { quoteSnippet, threadHref, type Board, type SortOrder } from "@/lib/forum";
-import { startLivePoll } from "@/lib/live-poll";
+import { fetchLiveJson, startLivePoll } from "@/lib/live-poll";
 import type { ThreadDetail } from "@/lib/queries";
+import { reviveThreadDetail } from "@/lib/thread-live";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -16,13 +16,11 @@ const POLL_MS = 4000;
 export function ThreadConversation({
   thread,
   canPost,
-  viewerId,
   board,
   order,
 }: {
   thread: ThreadDetail;
   canPost: boolean;
-  viewerId: string | null;
   board: Board | null;
   order: SortOrder;
 }) {
@@ -35,15 +33,13 @@ export function ThreadConversation({
   }, [thread]);
 
   useEffect(() => {
+    const page = Number.isFinite(thread.page) ? thread.page : 1;
+    const url = `/api/live/threads/${encodeURIComponent(thread.id)}?page=${page}`;
     return startLivePoll(async () => {
-      const next = await loadThreadPageAction({
-        id: thread.id,
-        page: thread.page,
-        viewerId,
-      });
-      if (next) setLive(next);
+      const next = await fetchLiveJson(url, reviveThreadDetail);
+      setLive(next);
     }, POLL_MS);
-  }, [thread.id, thread.page, viewerId]);
+  }, [thread.id, thread.page]);
 
   return (
     <div className="flex min-w-0 flex-col gap-4">

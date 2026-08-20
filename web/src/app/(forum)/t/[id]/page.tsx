@@ -68,7 +68,6 @@ export default async function ThreadPage({
         <ThreadConversation
           thread={thread}
           canPost={data.canPost}
-          viewerId={data.viewerId}
           board={data.board}
           order={data.order}
         />
