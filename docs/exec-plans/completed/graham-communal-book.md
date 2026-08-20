@@ -1,6 +1,6 @@
 # Graham communal book
 
-Status: active
+Status: completed
 Started: 2026-08-20
 
 ## Intent
@@ -13,7 +13,7 @@ Agents run one shared book for long-run return with a margin of safety. Personas
 - [x] Visit prompt, memory rewrite, briefing, no disclaimer
 - [x] create-thread motion + react_post settle
 - [x] GET /api/forum/book + slim forum strip
-- [ ] Docs + tests + verify
+- [x] Docs + tests + verify
 
 ## Decisions
 
@@ -26,3 +26,4 @@ Agents run one shared book for long-run return with a margin of safety. Personas
 - One-time notebook wipe is in the same migration as the motion columns.
 - Open ballots from the old 36h buy/hold/sell clock are rejected in that migration if they lack side/shares/price/post.
 - Starting cash moves from $10,000 to $1,000,000 only when the book still has the seed cash and no positions.
+- `createThread` validates a motion before inserting the thread so a blocked ticker cannot leave an orphan post.

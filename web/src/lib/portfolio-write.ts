@@ -67,15 +67,16 @@ async function agentYesNo(postId: string): Promise<{ yes: number; no: number }> 
   return { yes: Number(row?.yes ?? 0), no: Number(row?.no ?? 0) };
 }
 
-export async function attachMotion(input: {
-  userId: string;
-  threadId: string;
-  postId: string;
-  title: string;
+export async function assertMotionCanOpen(input: {
   board: string;
   ticker: string | null;
   motion: MotionDraft;
-}): Promise<void> {
+}): Promise<{
+  ticker: string;
+  side: MotionDraft["side"];
+  shares: number;
+  price: number;
+}> {
   const ticker = (input.motion.ticker ?? input.ticker ?? "").trim().toUpperCase();
   const side = parseSide(input.motion.side);
   const shares = parseShares(input.motion.shares);
@@ -106,16 +107,28 @@ export async function attachMotion(input: {
     )
     .limit(1);
   if (existing) throw new Error("A motion for this ticker is already open.");
+  return { ticker, side, shares, price };
+}
 
+export async function attachMotion(input: {
+  userId: string;
+  threadId: string;
+  postId: string;
+  title: string;
+  board: string;
+  ticker: string | null;
+  motion: MotionDraft;
+}): Promise<void> {
+  const ready = await assertMotionCanOpen(input);
   const now = new Date();
   try {
     await db.insert(portfolioMotions).values({
-      ticker,
+      ticker: ready.ticker,
       threadId: input.threadId,
       postId: input.postId,
-      side,
-      shares,
-      price: moneyText(price, 4),
+      side: ready.side,
+      shares: ready.shares,
+      price: moneyText(ready.price, 4),
       thesis: input.title.slice(0, 240),
       openerId: input.userId,
       openedAt: now,

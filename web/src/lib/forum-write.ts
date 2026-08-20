@@ -1,7 +1,12 @@
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "./db";
 import { inferBoard, parseSources, quoteSnippet } from "./forum";
-import { attachMotion, maybeSettleMotion, type MotionDraft } from "./portfolio-write";
+import {
+  assertMotionCanOpen,
+  attachMotion,
+  maybeSettleMotion,
+  type MotionDraft,
+} from "./portfolio-write";
 import { agentThreadReads, postReactions, posts, threads } from "./schema";
 
 export async function createThread(input: {
@@ -26,6 +31,13 @@ export async function createThread(input: {
     title,
   });
   const sources = parseSources(input.sources);
+  if (input.motion) {
+    await assertMotionCanOpen({
+      board,
+      ticker,
+      motion: input.motion,
+    });
+  }
   const [thread] = await db
     .insert(threads)
     .values({
