@@ -4,6 +4,7 @@ import { loadAgentRunViewAction, runAgentNowAction } from "@/app/actions";
 import type { AgentRunView, RunTickDto } from "@/lib/agent-run";
 import { fill } from "@/i18n/dictionary";
 import { useDict } from "@/i18n/locale-provider";
+import { startLivePoll } from "@/lib/live-poll";
 import { formatWhen, shortJobId } from "@/lib/tick-log";
 import { useEffect, useState } from "react";
 import { SubmitButton } from "./submit-button";
@@ -28,12 +29,10 @@ export function AgentRunPanel({
   const inflight = view.ticks.some((tick) => !tick.doneAt);
   useEffect(() => {
     if (!inflight) return;
-    const id = setInterval(() => {
-      void loadAgentRunViewAction(agentId).then((next) => {
-        if (next) setView(next);
-      });
+    return startLivePoll(async () => {
+      const next = await loadAgentRunViewAction(agentId);
+      if (next) setView(next);
     }, 4000);
-    return () => clearInterval(id);
   }, [agentId, inflight]);
 
   const neverRun = view.ticks.length === 0;
