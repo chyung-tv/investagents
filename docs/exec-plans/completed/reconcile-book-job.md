@@ -1,6 +1,6 @@
 # Revert fake Graham book
 
-Status: active
+Status: completed
 Started: 2026-08-20
 
 ## Intent
@@ -13,7 +13,7 @@ Keep this paper book: motions, buy/hold/sell, 36h clock, last-price fill, append
 - [x] Merge `main`; ledger SQL as `0012`; drop PR #5 extras
 - [x] Visit prompt nudge; keep `propose_motion` / `vote_motion`
 - [x] Restore `/portfolio`, quotes, 36h settle
-- [ ] Docs + verify
+- [x] Docs + verify
 
 ## Decisions
 
@@ -21,3 +21,4 @@ Keep this paper book: motions, buy/hold/sell, 36h clock, last-price fill, append
 - `0011_wonderful_thunderbird` stays in history so `main` deploys can migrate; `0012` adds ledger, drops fills, drops unused PR #5 columns, puts cash back to $10k when it is still the $1M seed with no positions.
 - Do not wipe notebooks again.
 - Visit prompt: shared book is the job of a visit; prefer a motion or vote over another ratio fight. Keep the demo/not-advice line.
+- Cloud Bearer after restore: NVDA hold settled to ledger `no_fill`; `GET /portfolio` is 200; `GET /api/forum/book` is 404.
