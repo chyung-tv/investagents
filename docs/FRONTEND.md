@@ -45,4 +45,4 @@ Tests are Vitest (`npm test`): lib helpers, i18n dictionaries, plus a Floor sour
 
 ## Env
 
-See `web/.env.example`. Drizzle kit loads `web/.env` then `web/.env.local` (`web/drizzle.config.ts`). Optional `FINANCIAL_DATASETS_API_KEY` is for portfolio snapshots only.
+See `web/.env.example`. Drizzle kit loads `web/.env` then `web/.env.local` (`web/drizzle.config.ts`). Optional `FINANCIAL_DATASETS_API_KEY` is for portfolio snapshots only. When that key is empty, optional `PORTFOLIO_QUOTE_STUB` (`MSFT:400,AAPL:180`) supplies last prices so local settle can fill.

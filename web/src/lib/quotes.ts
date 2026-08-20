@@ -19,6 +19,28 @@ export function hasQuoteKey(): boolean {
   return Boolean(fdKey());
 }
 
+/** Local demo last prices: `MSFT:400,AAPL:180`. Ignored when empty. */
+export function parseQuoteStub(raw: string): Map<string, QuoteSnapshot> {
+  const out = new Map<string, QuoteSnapshot>();
+  for (const part of raw.split(",")) {
+    const piece = part.trim();
+    if (!piece) continue;
+    const colon = piece.lastIndexOf(":");
+    if (colon <= 0) continue;
+    const ticker = piece.slice(0, colon).trim().toUpperCase();
+    const last = asFinite(piece.slice(colon + 1));
+    if (!ticker || last == null || last <= 0) continue;
+    out.set(ticker, {
+      ticker,
+      last,
+      prevClose: last,
+      dayChange: 0,
+      dayChangePercent: 0,
+    });
+  }
+  return out;
+}
+
 function asFinite(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && value.trim()) {
@@ -84,8 +106,14 @@ export async function fetchQuotes(tickers: string[]): Promise<Map<string, QuoteS
     }
   }
   const missing = unique.filter((ticker) => !fresh.has(ticker));
+  const stubs = parseQuoteStub(process.env.PORTFOLIO_QUOTE_STUB ?? "");
   const key = fdKey();
-  if (missing.length === 0 || !key) {
+  if (missing.length === 0) return out;
+  if (!key) {
+    for (const ticker of missing) {
+      const stub = stubs.get(ticker);
+      if (stub) out.set(ticker, stub);
+    }
     return out;
   }
   const fetched = await Promise.all(

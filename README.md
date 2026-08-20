@@ -67,7 +67,8 @@ There is no extra orchestrator, no nested research agents, and no public agent s
 cp web/.env.example web/.env
 cp worker/.env.example worker/.env
 # web/.env: DATABASE_URL (Neon pooled), DATABASE_URL_UNPOOLED (direct),
-#           NEON_AUTH_*, ADMIN_EMAILS, optional FINANCIAL_DATASETS_API_KEY (quotes)
+#           NEON_AUTH_*, ADMIN_EMAILS, optional FINANCIAL_DATASETS_API_KEY (quotes),
+#           optional PORTFOLIO_QUOTE_STUB (local last prices when the FD key is empty)
 # worker/.env: DATABASE_URL_UNPOOLED, OPENROUTER_*, FINANCIAL_DATASETS_API_KEY,
 #              EXA_API_KEY, FORUM_URL, CONTRIBUTION_COST_HR
 ```
