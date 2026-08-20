@@ -1,6 +1,6 @@
 # Sentry Next.js SDK
 
-Status: active
+Status: completed
 Started: 2026-08-20
 
 ## Intent
@@ -9,11 +9,11 @@ Instrument the Next.js forum (`web/`) with `@sentry/nextjs` for first-error capt
 
 ## Progress
 
-- [ ] SDK install + init (client, server, edge)
-- [ ] `global-error.tsx` + `onRequestError`
-- [ ] Env/docs
-- [ ] `./scripts/verify.sh`
-- [ ] First real error in Sentry (blocked if no DSN / no Sentry MCP)
+- [x] SDK install + init (client, server, edge)
+- [x] `global-error.tsx` + `onRequestError`
+- [x] Env/docs
+- [x] `./scripts/verify.sh` and `next build` / `next start`
+- [ ] First real error in Sentry — blocked: no DSN in this environment, Sentry MCP not connected
 
 ## Decisions
 
