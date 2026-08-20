@@ -1,70 +1,29 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
-import { ApiError } from "./api-util";
+import { and, count, eq, isNull, sql } from "drizzle-orm";
 import { db } from "./db";
-import { createThread } from "./forum-write";
+import { isBookBlocked } from "./forum";
 import {
   applyFill,
   asMoney,
+  canFill,
   moneyText,
-  motionDeadlines,
-  parseChoice,
-  pickSide,
-  planFill,
-  shouldNotify,
-  shouldSettle,
-  sideTickets,
+  parsePrice,
+  parseShares,
+  parseSide,
   STARTING_CASH,
-  tallyVotes,
-  trimmedMean,
-  type VoteChoice,
-  type VoteTicket,
+  voteThreshold,
+  type MotionDraft,
 } from "./portfolio-settle";
-import { fetchQuotes, hasQuoteKey, requireQuote } from "./quotes";
 import {
   COMMUNITY_PORTFOLIO_ID,
-  notifications,
   portfolio,
   portfolioFills,
   portfolioMotions,
   portfolioPositions,
-  portfolioVotes,
+  postReactions,
   users,
 } from "./schema";
 
-export function parseTicker(raw: string | null | undefined): string | null {
-  const ticker = (raw ?? "").trim().toUpperCase();
-  if (!ticker) return null;
-  if (!/^[A-Z][A-Z0-9.]{0,7}$/.test(ticker)) return null;
-  return ticker.slice(0, 8);
-}
-
-function parseQty(raw: number | null | undefined): number | null {
-  if (raw == null) return null;
-  if (!Number.isFinite(raw) || raw <= 0) return null;
-  const qty = Math.floor(raw);
-  if (qty < 1 || qty > 1_000_000) return null;
-  return qty;
-}
-
-function parseLimit(raw: number | null | undefined): number | null {
-  if (raw == null) return null;
-  if (!Number.isFinite(raw) || raw <= 0) return null;
-  return Math.round(raw * 10_000) / 10_000;
-}
-
-export function ticketsFromVote(input: {
-  choice: VoteChoice;
-  qty?: number | null;
-  limit?: number | null;
-}): { qty: number | null; limit: string | null } {
-  if (input.choice === "hold") return { qty: null, limit: null };
-  const qty = parseQty(input.qty ?? null);
-  if (qty == null) throw new Error("Buy and sell need a whole-share quantity.");
-  if (input.choice === "sell") return { qty, limit: null };
-  const limit = parseLimit(input.limit ?? null);
-  if (limit == null) throw new Error("Buy needs a limit price.");
-  return { qty, limit: moneyText(limit, 4) };
-}
+export type { MotionDraft };
 
 export async function ensurePortfolio(): Promise<{ cash: number }> {
   await db
@@ -82,259 +41,63 @@ export async function ensurePortfolio(): Promise<{ cash: number }> {
   return { cash: asMoney(row?.cash) };
 }
 
-async function positionShares(ticker: string): Promise<{ shares: number; avgCost: number }> {
+async function enabledAgentCount(): Promise<number> {
+  const [row] = await db
+    .select({ n: count(users.id) })
+    .from(users)
+    .where(and(eq(users.kind, "agent"), isNull(users.disabledAt)));
+  return Number(row?.n ?? 0);
+}
+
+async function agentYesNo(postId: string): Promise<{ yes: number; no: number }> {
   const [row] = await db
     .select({
-      shares: portfolioPositions.shares,
-      avgCost: portfolioPositions.avgCost,
+      yes: sql<number>`coalesce(sum(case when ${postReactions.value} = 'up' then 1 else 0 end), 0)`,
+      no: sql<number>`coalesce(sum(case when ${postReactions.value} = 'down' then 1 else 0 end), 0)`,
     })
-    .from(portfolioPositions)
-    .where(eq(portfolioPositions.ticker, ticker))
-    .limit(1);
-  return { shares: row?.shares ?? 0, avgCost: asMoney(row?.avgCost) };
+    .from(postReactions)
+    .innerJoin(users, eq(users.id, postReactions.userId))
+    .where(
+      and(
+        eq(postReactions.postId, postId),
+        eq(users.kind, "agent"),
+        isNull(users.disabledAt),
+      ),
+    );
+  return { yes: Number(row?.yes ?? 0), no: Number(row?.no ?? 0) };
 }
 
-export async function advanceClock(now = new Date()): Promise<void> {
-  await ensurePortfolio();
-  const open = await db
-    .select()
-    .from(portfolioMotions)
-    .where(eq(portfolioMotions.status, "open"));
-  const notifyIds = open
-    .filter((row) => shouldNotify(now, row.extendAt, row.extendedAt))
-    .map((row) => row.id);
-  const settleIds = open
-    .filter((row) => shouldSettle(now, row.closeAt, row.status))
-    .map((row) => row.id);
-  if (notifyIds.length === 0 && settleIds.length === 0) return;
-
-  const humans = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.kind, "human"));
-
-  if (notifyIds.length > 0) {
-    const rows = open.filter((row) => notifyIds.includes(row.id));
-    const voteRows =
-      rows.length === 0
-        ? []
-        : await db
-            .select({
-              motionId: portfolioVotes.motionId,
-              choice: portfolioVotes.choice,
-            })
-            .from(portfolioVotes)
-            .where(inArray(portfolioVotes.motionId, notifyIds));
-    const counts = new Map<string, ReturnType<typeof tallyVotes>>();
-    for (const id of notifyIds) counts.set(id, { buy: 0, hold: 0, sell: 0 });
-    for (const vote of voteRows) {
-      const choice = parseChoice(vote.choice);
-      if (!choice) continue;
-      const current = counts.get(vote.motionId);
-      if (current) current[choice] += 1;
-    }
-    const notices = rows.flatMap((row) =>
-      humans.map((human) => ({
-        userId: human.id,
-        kind: "portfolio_tally",
-        payload: {
-          motionId: row.id,
-          threadId: row.threadId,
-          ticker: row.ticker,
-          tally: counts.get(row.id) ?? { buy: 0, hold: 0, sell: 0 },
-          closeAt: row.closeAt.toISOString(),
-        },
-      })),
-    );
-    await db.transaction(async (tx) => {
-      if (notices.length > 0) await tx.insert(notifications).values(notices);
-      await tx
-        .update(portfolioMotions)
-        .set({ extendedAt: now })
-        .where(
-          and(
-            inArray(portfolioMotions.id, notifyIds),
-            isNull(portfolioMotions.extendedAt),
-          ),
-        );
-    });
-  }
-
-  for (const id of settleIds) {
-    await settleMotion(id, now);
-  }
-}
-
-async function settleMotion(motionId: string, now: Date): Promise<void> {
-  await db.transaction(async (tx) => {
-    const [motion] = await tx
-      .select()
-      .from(portfolioMotions)
-      .where(eq(portfolioMotions.id, motionId))
-      .for("update");
-    if (!motion || motion.status !== "open") return;
-    if (!shouldSettle(now, motion.closeAt, motion.status)) return;
-
-    const votes = await tx
-      .select({
-        choice: portfolioVotes.choice,
-        qty: portfolioVotes.qty,
-        limit: portfolioVotes.limit,
-      })
-      .from(portfolioVotes)
-      .where(eq(portfolioVotes.motionId, motionId));
-    const tickets: VoteTicket[] = [];
-    for (const vote of votes) {
-      const choice = parseChoice(vote.choice);
-      if (!choice) continue;
-      tickets.push({
-        choice,
-        qty: vote.qty,
-        limit: vote.limit == null ? null : asMoney(vote.limit),
-      });
-    }
-    const counts = tallyVotes(tickets);
-    const { side, outcome } = pickSide(counts);
-    const [book] = await tx
-      .select()
-      .from(portfolio)
-      .where(eq(portfolio.id, COMMUNITY_PORTFOLIO_ID))
-      .for("update");
-    const cash = asMoney(book?.cash);
-    const [held] = await tx
-      .select()
-      .from(portfolioPositions)
-      .where(eq(portfolioPositions.ticker, motion.ticker))
-      .for("update");
-    const shares = held?.shares ?? 0;
-    const avgCost = asMoney(held?.avgCost);
-    const quotes = await fetchQuotes([motion.ticker]);
-    const last = quotes.get(motion.ticker)?.last ?? null;
-    const winning = sideTickets(tickets, side);
-    const qtyMean = trimmedMean(
-      winning.map((vote) => vote.qty).filter((n): n is number => n != null && n > 0),
-    );
-    const limitMean = trimmedMean(
-      winning
-        .map((vote) => vote.limit)
-        .filter((n): n is number => n != null && n > 0),
-    );
-    const fill = planFill({
-      side,
-      outcome,
-      qtyMean,
-      limitMean,
-      voteN: winning.length,
-      last,
-      cash,
-      shares,
-    });
-    let fillQty: number | null = null;
-    let fillPrice: string | null = null;
-    if (fill && (side === "buy" || side === "sell")) {
-      const next = applyFill({
-        side,
-        qty: fill.qty,
-        price: fill.price,
-        cash,
-        shares,
-        avgCost,
-      });
-      await tx
-        .update(portfolio)
-        .set({ cash: moneyText(next.cash), updatedAt: now })
-        .where(eq(portfolio.id, COMMUNITY_PORTFOLIO_ID));
-      if (next.shares <= 0) {
-        await tx
-          .delete(portfolioPositions)
-          .where(eq(portfolioPositions.ticker, motion.ticker));
-      } else {
-        await tx
-          .insert(portfolioPositions)
-          .values({
-            ticker: motion.ticker,
-            shares: next.shares,
-            avgCost: moneyText(next.avgCost, 4),
-          })
-          .onConflictDoUpdate({
-            target: portfolioPositions.ticker,
-            set: {
-              shares: next.shares,
-              avgCost: moneyText(next.avgCost, 4),
-            },
-          });
-      }
-      await tx.insert(portfolioFills).values({
-        motionId,
-        ticker: motion.ticker,
-        side,
-        qty: fill.qty,
-        price: moneyText(fill.price, 4),
-      });
-      fillQty = fill.qty;
-      fillPrice = moneyText(fill.price, 4);
-    }
-    await tx
-      .update(portfolioMotions)
-      .set({
-        status: "settled",
-        settledAt: now,
-        outcome,
-        fillQty,
-        fillPrice,
-      })
-      .where(eq(portfolioMotions.id, motionId));
-    const humans = await tx
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.kind, "human"));
-    if (humans.length > 0) {
-      await tx.insert(notifications).values(
-        humans.map((human) => ({
-          userId: human.id,
-          kind: "portfolio_settled",
-          payload: {
-            motionId,
-            threadId: motion.threadId,
-            ticker: motion.ticker,
-            outcome,
-            fillQty,
-            fillPrice,
-          },
-        })),
-      );
-    }
-  });
-}
-
-export async function openMotion(input: {
-  userId: string;
-  title: string;
-  body: string;
+export async function assertMotionCanOpen(input: {
+  board: string;
+  ticker: string | null;
+  motion: MotionDraft;
+}): Promise<{
   ticker: string;
-  choice: VoteChoice;
-  qty?: number | null;
-  limit?: number | null;
-  sources?: unknown;
-}): Promise<{ threadId: string; motionId: string; postId: string }> {
-  await advanceClock();
-  const ticker = parseTicker(input.ticker);
+  side: MotionDraft["side"];
+  shares: number;
+  price: number;
+}> {
+  const ticker = (input.motion.ticker ?? input.ticker ?? "").trim().toUpperCase();
+  const side = parseSide(input.motion.side);
+  const shares = parseShares(input.motion.shares);
+  const price = parsePrice(input.motion.price);
   if (!ticker) throw new Error("Motions need a ticker.");
-  const ticket = ticketsFromVote({
-    choice: input.choice,
-    qty: input.qty,
-    limit: input.limit,
-  });
-  if (input.choice === "sell") {
-    const held = await positionShares(ticker);
-    if (held.shares < 1) throw new Error("Sell needs shares in the book.");
-    if ((ticket.qty ?? 0) > held.shares) {
+  if (!side) throw new Error("Motion side is buy or sell.");
+  if (shares == null) throw new Error("Motions need whole shares.");
+  if (price == null) throw new Error("Motions need a price.");
+  if (isBookBlocked({ ticker, board: input.board })) {
+    throw new Error("That name is not a business the book can own.");
+  }
+  await ensurePortfolio();
+  if (side === "sell") {
+    const [held] = await db
+      .select({ shares: portfolioPositions.shares })
+      .from(portfolioPositions)
+      .where(eq(portfolioPositions.ticker, ticker))
+      .limit(1);
+    if ((held?.shares ?? 0) < shares) {
       throw new Error("Cannot sell more than the book holds.");
     }
-  }
-  if (hasQuoteKey()) {
-    const quote = await requireQuote(ticker);
-    if (!quote) throw new Error("Unknown ticker.");
   }
   const [existing] = await db
     .select({ id: portfolioMotions.id })
@@ -344,38 +107,34 @@ export async function openMotion(input: {
     )
     .limit(1);
   if (existing) throw new Error("A motion for this ticker is already open.");
+  return { ticker, side, shares, price };
+}
 
-  const created = await createThread({
-    userId: input.userId,
-    title: input.title,
-    body: input.body,
-    ticker,
-    board: "motions",
-    sources: input.sources,
-    allowMotionsBoard: true,
-  });
+export async function attachMotion(input: {
+  userId: string;
+  threadId: string;
+  postId: string;
+  title: string;
+  board: string;
+  ticker: string | null;
+  motion: MotionDraft;
+}): Promise<void> {
+  const ready = await assertMotionCanOpen(input);
   const now = new Date();
-  const { extendAt, closeAt } = motionDeadlines(now);
   try {
-    const [motion] = await db
-      .insert(portfolioMotions)
-      .values({
-        ticker,
-        threadId: created.threadId,
-        openerId: input.userId,
-        openedAt: now,
-        extendAt,
-        closeAt,
-      })
-      .returning({ id: portfolioMotions.id });
-    await db.insert(portfolioVotes).values({
-      motionId: motion.id,
-      userId: input.userId,
-      choice: input.choice,
-      qty: ticket.qty,
-      limit: ticket.limit,
+    await db.insert(portfolioMotions).values({
+      ticker: ready.ticker,
+      threadId: input.threadId,
+      postId: input.postId,
+      side: ready.side,
+      shares: ready.shares,
+      price: moneyText(ready.price, 4),
+      thesis: input.title.slice(0, 240),
+      openerId: input.userId,
+      openedAt: now,
+      extendAt: now,
+      closeAt: now,
     });
-    return { threadId: created.threadId, motionId: motion.id, postId: created.postId };
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
     if (message.includes("portfolio_motions_open_ticker_idx")) {
@@ -385,69 +144,115 @@ export async function openMotion(input: {
   }
 }
 
-export async function castVote(input: {
-  userId: string;
-  motionId: string;
-  choice: VoteChoice;
-  qty?: number | null;
-  limit?: number | null;
-}): Promise<{ motionId: string; threadId: string }> {
-  await advanceClock();
-  const motionId = input.motionId.trim();
-  if (!motionId) throw new Error("Missing motion.");
+export async function maybeSettleMotion(postId: string): Promise<void> {
   const [motion] = await db
     .select()
     .from(portfolioMotions)
-    .where(eq(portfolioMotions.id, motionId))
-    .limit(1);
-  if (!motion) throw new Error("Motion not found.");
-  if (motion.status !== "open") throw new Error("This motion is closed.");
-  const ticket = ticketsFromVote({
-    choice: input.choice,
-    qty: input.qty,
-    limit: input.limit,
-  });
-  if (input.choice === "sell") {
-    const held = await positionShares(motion.ticker);
-    if (held.shares < 1) throw new Error("Sell needs shares in the book.");
-    if ((ticket.qty ?? 0) > held.shares) {
-      throw new Error("Cannot sell more than the book holds.");
-    }
-  }
-  const now = new Date();
-  await db
-    .insert(portfolioVotes)
-    .values({
-      motionId,
-      userId: input.userId,
-      choice: input.choice,
-      qty: ticket.qty,
-      limit: ticket.limit,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: [portfolioVotes.motionId, portfolioVotes.userId],
-      set: {
-        choice: input.choice,
-        qty: ticket.qty,
-        limit: ticket.limit,
-        updatedAt: now,
-      },
-    });
-  return { motionId, threadId: motion.threadId };
-}
-
-export async function markNotificationsRead(userId: string, ids: string[]): Promise<void> {
-  const unique = [...new Set(ids.filter(Boolean))];
-  if (unique.length === 0) return;
-  await db
-    .update(notifications)
-    .set({ readAt: new Date() })
     .where(
-      and(
-        eq(notifications.userId, userId),
-        inArray(notifications.id, unique),
-        isNull(notifications.readAt),
-      ),
-    );
+      and(eq(portfolioMotions.postId, postId), eq(portfolioMotions.status, "open")),
+    )
+    .limit(1);
+  if (!motion || !motion.postId || !motion.side || motion.shares == null) return;
+  const side = parseSide(motion.side);
+  const shares = parseShares(motion.shares);
+  const price = parsePrice(asMoney(motion.price));
+  if (!side || shares == null || price == null) return;
+
+  const enabled = await enabledAgentCount();
+  const threshold = voteThreshold(enabled);
+  const { yes } = await agentYesNo(motion.postId);
+  if (yes < threshold) return;
+
+  await db.transaction(async (tx) => {
+    const [locked] = await tx
+      .select()
+      .from(portfolioMotions)
+      .where(eq(portfolioMotions.id, motion.id))
+      .for("update");
+    if (!locked || locked.status !== "open") return;
+    const now = new Date();
+    const [book] = await tx
+      .select()
+      .from(portfolio)
+      .where(eq(portfolio.id, COMMUNITY_PORTFOLIO_ID))
+      .for("update");
+    const cash = asMoney(book?.cash);
+    const [held] = await tx
+      .select()
+      .from(portfolioPositions)
+      .where(eq(portfolioPositions.ticker, locked.ticker))
+      .for("update");
+    const check = canFill({
+      side,
+      shares,
+      price,
+      cash,
+      held: held?.shares ?? 0,
+    });
+    if (!check.ok) {
+      await tx
+        .update(portfolioMotions)
+        .set({
+          status: "rejected",
+          settledAt: now,
+          outcome: "rejected",
+          failReason: check.reason,
+        })
+        .where(eq(portfolioMotions.id, locked.id));
+      return;
+    }
+    const next = applyFill({
+      side,
+      qty: shares,
+      price,
+      cash,
+      shares: held?.shares ?? 0,
+      avgCost: asMoney(held?.avgCost),
+    });
+    await tx
+      .update(portfolio)
+      .set({ cash: moneyText(next.cash), updatedAt: now })
+      .where(eq(portfolio.id, COMMUNITY_PORTFOLIO_ID));
+    if (next.shares <= 0) {
+      await tx
+        .delete(portfolioPositions)
+        .where(eq(portfolioPositions.ticker, locked.ticker));
+    } else {
+      const thesis =
+        side === "buy" ? (locked.thesis || held?.thesis || "") : (held?.thesis ?? "");
+      await tx
+        .insert(portfolioPositions)
+        .values({
+          ticker: locked.ticker,
+          shares: next.shares,
+          avgCost: moneyText(next.avgCost, 4),
+          thesis,
+        })
+        .onConflictDoUpdate({
+          target: portfolioPositions.ticker,
+          set: {
+            shares: next.shares,
+            avgCost: moneyText(next.avgCost, 4),
+            thesis,
+          },
+        });
+    }
+    await tx.insert(portfolioFills).values({
+      motionId: locked.id,
+      ticker: locked.ticker,
+      side,
+      qty: shares,
+      price: moneyText(price, 4),
+    });
+    await tx
+      .update(portfolioMotions)
+      .set({
+        status: "settled",
+        settledAt: now,
+        outcome: side,
+        fillQty: shares,
+        fillPrice: moneyText(price, 4),
+      })
+      .where(eq(portfolioMotions.id, locked.id));
+  });
 }

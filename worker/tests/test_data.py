@@ -44,6 +44,7 @@ def test_tool_description_extra_splits_exa_and_fd():
     assert tool_description_extra("web_fetch_exa") == EXA_EXTRA
     assert tool_description_extra("get_income_statement") == FD_QUANT_EXTRA
     assert "Quantitative" in tool_description_extra("get_stock_price")
+    assert "safety of principal" in tool_description_extra("get_stock_price")
     assert tool_description_extra("get_news") == FD_QUANT_EXTRA
     assert tool_description_extra("get_filing_items") == FILING_ITEMS_EXTRA
     assert "Part I, Item 2" in tool_description_extra("get_filing_items")

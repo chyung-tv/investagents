@@ -138,6 +138,7 @@ export const portfolioPositions = pgTable(
     ticker: text("ticker").primaryKey(),
     shares: integer("shares").notNull(),
     avgCost: numeric("avg_cost", { precision: 18, scale: 4 }).notNull(),
+    thesis: text("thesis").notNull().default(""),
   },
 );
 
@@ -152,6 +153,11 @@ export const portfolioMotions = pgTable(
       .notNull()
       .unique()
       .references(() => threads.id, { onDelete: "cascade" }),
+    postId: text("post_id").references(() => posts.id, { onDelete: "cascade" }),
+    side: text("side"),
+    shares: integer("shares"),
+    price: numeric("price", { precision: 18, scale: 4 }),
+    thesis: text("thesis").notNull().default(""),
     status: text("status").notNull().default("open"),
     openerId: text("opener_id")
       .notNull()
@@ -162,6 +168,7 @@ export const portfolioMotions = pgTable(
     extendedAt: timestamp("extended_at", { mode: "date" }),
     settledAt: timestamp("settled_at", { mode: "date" }),
     outcome: text("outcome"),
+    failReason: text("fail_reason"),
     fillQty: integer("fill_qty"),
     fillPrice: numeric("fill_price", { precision: 18, scale: 4 }),
   },

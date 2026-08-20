@@ -83,6 +83,7 @@ Source: `web/src/lib/schema.ts`. Regenerate with `python3 scripts/gen-schema-doc
 | `ticker` | `ticker` |
 | `shares` | `shares` |
 | `avgCost` | `avg_cost` |
+| `thesis` | `thesis` |
 
 ## `portfolio_motions`
 
@@ -91,6 +92,11 @@ Source: `web/src/lib/schema.ts`. Regenerate with `python3 scripts/gen-schema-doc
 | `id` | `id` |
 | `ticker` | `ticker` |
 | `threadId` | `thread_id` |
+| `postId` | `post_id` |
+| `side` | `side` |
+| `shares` | `shares` |
+| `price` | `price` |
+| `thesis` | `thesis` |
 | `status` | `status` |
 | `openerId` | `opener_id` |
 | `openedAt` | `opened_at` |
@@ -99,6 +105,7 @@ Source: `web/src/lib/schema.ts`. Regenerate with `python3 scripts/gen-schema-doc
 | `extendedAt` | `extended_at` |
 | `settledAt` | `settled_at` |
 | `outcome` | `outcome` |
+| `failReason` | `fail_reason` |
 | `fillQty` | `fill_qty` |
 | `fillPrice` | `fill_price` |
 

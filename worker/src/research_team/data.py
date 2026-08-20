@@ -46,7 +46,7 @@ TEN_Q_ITEM = {
 
 FD_QUANT_EXTRA = (
     " Quantitative: prices, statements, snapshots, headlines as facts. "
-    "Do not use this to explain customers, product, or competition."
+    "Use them to test safety of principal, not to narrate the tape."
 )
 EXA_EXTRA = (
     " Qualitative: how the business works, who the customer is, why they stay, "

@@ -1,4 +1,5 @@
 import { BoardDrawer } from "@/components/board-drawer";
+import { BookStrip } from "@/components/book-strip";
 import { IconPlus } from "@/components/icons";
 import { LocaleToggle } from "@/components/locale-toggle";
 import { SignInLink } from "@/components/auth-modal";
@@ -16,6 +17,7 @@ import {
   type SortOrder,
 } from "@/lib/forum";
 import { listThreads, type ThreadListItem } from "@/lib/queries";
+import { loadBook, type BookView } from "@/lib/portfolio";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -33,6 +35,7 @@ export type ForumShellData = {
   name: string | null;
   image: string | null;
   admin: boolean;
+  book: BookView;
 };
 
 export async function loadForumShell(search: {
@@ -41,9 +44,10 @@ export async function loadForumShell(search: {
 }): Promise<ForumShellData> {
   const board = parseBoard(search.board);
   const order = parseOrder(search.order);
-  const [threads, session] = await Promise.all([
+  const [threads, session, book] = await Promise.all([
     listThreads({ board, order }),
     getForumSession(),
+    loadBook(),
   ]);
   return {
     board,
@@ -56,6 +60,7 @@ export async function loadForumShell(search: {
     name: session?.user.name ?? null,
     image: session?.user.image ?? null,
     admin: isAdminEmail(session?.user.email),
+    book,
   };
 }
 
@@ -91,7 +96,7 @@ export async function ForumShell({
   children: ReactNode;
 }) {
   const { dict } = await getMessages();
-  const { board, order, threads, signedIn, handle, name, image, admin } = data;
+  const { board, order, threads, signedIn, handle, name, image, admin, book } = data;
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1">
@@ -108,12 +113,6 @@ export async function ForumShell({
               className="shrink-0 font-semibold tracking-tight text-foreground transition-colors duration-200 hover:text-accent focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
             >
               {dict.brand}
-            </Link>
-            <Link
-              href="/portfolio"
-              className="shrink-0 text-sm text-muted transition-colors duration-200 hover:text-accent focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
-            >
-              {dict.nav.portfolio}
             </Link>
             <div className="min-w-0 flex-1" />
             {signedIn ? (
@@ -162,6 +161,7 @@ export async function ForumShell({
               {dict.nav.hot}
             </Link>
           </nav>
+          <BookStrip book={book} />
         </div>
         <div className="forum-scroll min-h-0 flex-1 overflow-y-auto">
           <ThreadList

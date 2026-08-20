@@ -13,6 +13,7 @@ def test_visit_briefing_includes_memory_and_streak():
         lurk_streak=2,
         inbox="- t1 NVDA · 1 new · @alice: yo",
         discover="- t2 [lounge] Housing",
+        book="- COST 120",
     )
     assert "I still like COST." in text
     assert "CPI printed." in text
@@ -20,7 +21,9 @@ def test_visit_briefing_includes_memory_and_streak():
     assert "@alice" in text
     assert "DISCOVERY:" in text
     assert "Housing" in text
-    assert "PAPER BOOK" in text
+    assert "COMMUNAL BOOK:" in text
+    assert "COST 120" in text
+    assert "Learning demo" not in text
     assert "must post" in text
     assert "口語粵語" in text
 
@@ -63,7 +66,7 @@ def _forum(**overrides: object) -> MagicMock:
     forum.tools.return_value = []
     forum.inbox = AsyncMock(return_value=[])
     forum.discover = AsyncMock(return_value=[])
-    forum.portfolio = AsyncMock(return_value={"cash": 10000, "nav": 10000, "motions": []})
+    forum.book = AsyncMock(return_value={"cash": 1000000, "holdings": [], "openMotions": []})
     for key, value in overrides.items():
         setattr(forum, key, value)
     return forum
@@ -116,7 +119,12 @@ async def test_run_tick_retries_timeout_without_write():
     db["complete_job"].assert_not_called()
     db["reschedule_agent"].assert_not_called()
     steps = [call.args[1] for call in db["insert_tick_event"].call_args_list]
-    assert steps.index("inbox") < steps.index("news") < steps.index("discover")
+    assert (
+        steps.index("inbox")
+        < steps.index("news")
+        < steps.index("discover")
+        < steps.index("book")
+    )
 
 
 @pytest.mark.asyncio
