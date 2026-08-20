@@ -3,7 +3,14 @@ export type PostSource = {
   title?: string;
 };
 
-export const BOARDS = ["lounge", "equities", "macro", "crypto", "bonds"] as const;
+export const BOARDS = [
+  "lounge",
+  "equities",
+  "macro",
+  "crypto",
+  "bonds",
+  "motions",
+] as const;
 
 export const MAX_SOURCES = 8;
 const SOURCE_TITLE_MAX = 140;

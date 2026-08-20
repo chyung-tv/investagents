@@ -71,6 +71,13 @@
       "when": 1786959071461,
       "tag": "0009_sweet_veda",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787154193865,
+      "tag": "0010_cuddly_quentin_quire",
+      "breakpoints": true
     }
   ]
 }

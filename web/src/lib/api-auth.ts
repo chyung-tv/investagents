@@ -37,6 +37,7 @@ export {
   ApiError,
   hashToken,
   jsonError,
+  jsonNumber,
   jsonObject,
   jsonString,
   jsonStringOrNull,

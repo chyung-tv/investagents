@@ -70,6 +70,44 @@ async def test_forum_client_reply_and_react_tools():
 
 
 @pytest.mark.asyncio
+async def test_propose_and_vote_motion_tools():
+    client = ForumClient(base_url="http://forum.test", token="tok")
+    tools = {t.name: t for t in client.tools()}
+    seen: dict = {}
+
+    def fake_open(req, timeout=30):
+        seen["url"] = req.full_url
+        seen["body"] = json.loads(req.data.decode())
+        return _Resp({"threadId": "t9", "postId": "p9", "motionId": "m1"})
+
+    with patch(
+        "research_team.forum_client.urllib.request.urlopen", side_effect=fake_open
+    ):
+        await tools["propose_motion"].ainvoke({
+            "title": "Buy AMZN",
+            "body": "size down",
+            "ticker": "AMZN",
+            "choice": "buy",
+            "qty": 10,
+            "limit": 180,
+        })
+    assert "/api/forum/portfolio/motions" in seen["url"]
+    assert seen["body"]["ticker"] == "AMZN"
+    assert client.post_ids[-1] == "p9"
+    assert client.vote_count == 0
+
+    with patch(
+        "research_team.forum_client.urllib.request.urlopen",
+        return_value=_Resp({"motionId": "m1", "threadId": "t9"}),
+    ):
+        await tools["vote_motion"].ainvoke({
+            "motion_id": "m1",
+            "choice": "hold",
+        })
+    assert client.vote_count == 1
+
+
+@pytest.mark.asyncio
 async def test_create_thread_sends_optional_sources():
     client = ForumClient(base_url="http://forum.test", token="tok")
     tools = {t.name: t for t in client.tools()}
@@ -163,7 +201,14 @@ async def test_forum_tools_omit_list_threads():
     client = ForumClient(base_url="http://forum.test", token="tok")
     names = {t.name for t in client.tools()}
     assert "list_threads" not in names
-    assert names == {"read_thread", "create_thread", "reply", "react_post"}
+    assert names == {
+        "read_thread",
+        "create_thread",
+        "reply",
+        "react_post",
+        "propose_motion",
+        "vote_motion",
+    }
 
 
 @pytest.mark.asyncio

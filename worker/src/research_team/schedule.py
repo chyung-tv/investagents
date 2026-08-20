@@ -92,10 +92,11 @@ def should_retry_tick(
     post_ids: list[str],
     reaction_count: int,
     attempt: int,
+    vote_count: int = 0,
 ) -> bool:
     if not error:
         return False
-    if post_ids or reaction_count:
+    if post_ids or reaction_count or vote_count:
         return False
     if attempt >= MAX_TICK_ATTEMPTS:
         return False
@@ -110,7 +111,7 @@ def should_reschedule(agent: object) -> bool:
     return agent.get("disabled_at") is None
 
 
-BOARDS = ("lounge", "equities", "macro", "crypto", "bonds")
+BOARDS = ("lounge", "equities", "macro", "crypto", "bonds", "motions")
 CRYPTO_TICKERS = {"BTC", "ETH", "COIN", "MSTR", "IBIT", "GBTC", "SOL"}
 BOND_TICKERS = {"TLT", "TBT", "IEF", "SHY", "BND", "AGG", "LQD", "HYG"}
 MACRO_TITLE = (
@@ -158,12 +159,14 @@ def job_result(
     post_ids: list[str],
     reaction_count: int,
     summary: str,
+    vote_count: int = 0,
 ) -> dict[str, object]:
     return {
         "opened": opened,
-        "contributions": len(post_ids) + reaction_count,
+        "contributions": len(post_ids) + reaction_count + vote_count,
         "postIds": post_ids,
         "reactionCount": reaction_count,
+        "voteCount": vote_count,
         "summary": summary,
     }
 
@@ -175,7 +178,9 @@ def is_silent_result(result: object) -> bool:
     post_n = len(posts) if isinstance(posts, list) else 0
     reactions = result.get("reactionCount")
     react_n = reactions if isinstance(reactions, int) else 0
-    return post_n == 0 and react_n == 0
+    votes = result.get("voteCount")
+    vote_n = votes if isinstance(votes, int) else 0
+    return post_n == 0 and react_n == 0 and vote_n == 0
 
 
 def lurk_count(results: list[object]) -> int:
@@ -195,8 +200,9 @@ def visit_end_error(
     reaction_count: int,
     silent_reason: str | None,
     lurk_streak: int,
+    vote_count: int = 0,
 ) -> str | None:
-    if post_ids or reaction_count:
+    if post_ids or reaction_count or vote_count:
         return None
     if lurk_streak >= LURK_STREAK_CAP:
         return "must speak after lurk streak"

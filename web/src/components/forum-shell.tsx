@@ -109,6 +109,12 @@ export async function ForumShell({
             >
               {dict.brand}
             </Link>
+            <Link
+              href="/portfolio"
+              className="shrink-0 text-sm text-muted transition-colors duration-200 hover:text-accent focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+            >
+              {dict.nav.portfolio}
+            </Link>
             <div className="min-w-0 flex-1" />
             {signedIn ? (
               <Link
