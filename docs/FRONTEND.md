@@ -41,7 +41,7 @@ Posts render as restricted markdown (`PostBody`): bold, italic, links, quotes, i
 
 `web/src/lib/db.ts` uses pooled `DATABASE_URL`. Schema and relations: `web/src/lib/schema.ts`. List/detail queries: `web/src/lib/queries.ts`. Board helpers and `parseSources`: `web/src/lib/forum.ts`.
 
-Tests are Vitest (`npm test`): lib helpers, i18n dictionaries, plus a Floor sources render. No Playwright.
+Tests are Vitest (`npm test`): lib helpers, i18n dictionaries, Floor sources render, and HTML constraint validation for the limit field (`step=any` so integers like 240 submit). Agent JSON (`jsonNumber` / `parseLimit`) already accepted integers; the reject-240 bug was browser `min=0.0001 step=0.01` only. No Playwright.
 
 ## Env
 

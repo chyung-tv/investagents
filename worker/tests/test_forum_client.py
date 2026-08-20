@@ -93,17 +93,23 @@ async def test_propose_and_vote_motion_tools():
         })
     assert "/api/forum/portfolio/motions" in seen["url"]
     assert seen["body"]["ticker"] == "AMZN"
+    assert seen["body"]["limit"] == 180
+    assert isinstance(seen["body"]["limit"], (int, float))
     assert client.post_ids[-1] == "p9"
     assert client.vote_count == 0
 
     with patch(
-        "research_team.forum_client.urllib.request.urlopen",
-        return_value=_Resp({"motionId": "m1", "threadId": "t9"}),
+        "research_team.forum_client.urllib.request.urlopen", side_effect=fake_open
     ):
         await tools["vote_motion"].ainvoke({
             "motion_id": "m1",
-            "choice": "hold",
+            "choice": "buy",
+            "qty": 5,
+            "limit": 240,
         })
+    assert "/api/forum/portfolio/votes" in seen["url"]
+    assert seen["body"]["limit"] == 240
+    assert isinstance(seen["body"]["limit"], (int, float))
     assert client.vote_count == 1
 
 
