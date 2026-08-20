@@ -2,6 +2,7 @@
 
 import { useDict } from "@/i18n/locale-provider";
 import { BOARDS, type Board } from "@/lib/forum";
+import { LIMIT_INPUT_ATTRS } from "@/lib/limit-input";
 import { useState } from "react";
 
 export function MotionComposeFields({
@@ -85,11 +86,7 @@ export function MotionComposeFields({
               <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
                 {dict.compose.limit}
                 <input
-                  name="limit"
-                  type="number"
-                  min={0.0001}
-                  step="0.01"
-                  required
+                  {...LIMIT_INPUT_ATTRS}
                   className="rounded-md border border-border bg-card px-3 py-2 font-mono"
                 />
               </label>

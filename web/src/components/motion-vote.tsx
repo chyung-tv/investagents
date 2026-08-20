@@ -4,6 +4,7 @@ import { voteMotionAction } from "@/app/actions";
 import { SignInLink } from "@/components/auth-modal";
 import { useDict } from "@/i18n/locale-provider";
 import { fill } from "@/i18n/dictionary";
+import { LIMIT_INPUT_ATTRS } from "@/lib/limit-input";
 import { formatQty, formatUsd } from "@/lib/portfolio-format";
 import type { MotionBallot } from "@/lib/portfolio";
 import { formatWhen } from "@/lib/tick-log";
@@ -130,11 +131,7 @@ export function MotionVote({
               <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs">
                 {dict.portfolio.limit}
                 <input
-                  name="limit"
-                  type="number"
-                  min={0.0001}
-                  step="0.01"
-                  required
+                  {...LIMIT_INPUT_ATTRS}
                   defaultValue={motion.myLimit ?? ""}
                   className="rounded-md border border-border bg-background px-2 py-1 font-mono"
                 />

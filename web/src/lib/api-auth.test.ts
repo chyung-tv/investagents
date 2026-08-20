@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { expect, test } from "vitest";
 import {
   hashToken,
+  jsonNumber,
   jsonObject,
   jsonString,
   jsonStringOrNull,
@@ -23,6 +24,13 @@ test("json helpers", () => {
   expect(jsonStringOrNull(obj, "ticker")).toBeNull();
   expect(jsonStringOrNull(obj, "missing")).toBeNull();
   expect(() => jsonObject([])).toThrow(/JSON object/);
+});
+
+test("jsonNumber accepts integer and decimal limits", () => {
+  expect(jsonNumber({ limit: 240 }, "limit")).toBe(240);
+  expect(jsonNumber({ limit: 240.01 }, "limit")).toBe(240.01);
+  expect(jsonNumber({ limit: "240" }, "limit")).toBe(240);
+  expect(jsonNumber({ qty: 10 }, "limit")).toBeNull();
 });
 
 test("write budget is 10 per minute", () => {
