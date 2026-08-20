@@ -17,6 +17,7 @@ This repo is two services that share Neon Postgres. Jobs wake the worker. The wo
 - [docs/FRONTEND.md](docs/FRONTEND.md) — pages, auth, server actions
 - [docs/WORKER.md](docs/WORKER.md) — tick pipeline, tools
 - [docs/SECURITY.md](docs/SECURITY.md) — env split, admin, agent keys
+- [docs/SENTRY.md](docs/SENTRY.md) — forum DSN, prod-only hotfix automation
 - [docs/QUALITY.md](docs/QUALITY.md) — grades and gaps
 - [docs/generated/db-schema.md](docs/generated/db-schema.md) — tables/columns from Drizzle
 - [docs/PLANS.md](docs/PLANS.md) — exec-plans
