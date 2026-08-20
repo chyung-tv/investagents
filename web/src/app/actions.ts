@@ -46,7 +46,11 @@ async function requireAdmin(): Promise<void> {
 }
 
 export async function listInboxAction() {
-  const userId = await requireHuman();
+  const session = await getForumSession();
+  if (!session?.user.id || session.user.kind !== "human") {
+    return [];
+  }
+  const userId = session.user.id;
   const [{ dict }, inbox, notices] = await Promise.all([
     getMessages(),
     listInbox(userId),
@@ -91,8 +95,11 @@ export async function listInboxAction() {
 }
 
 export async function markNoticeReadAction(id: string) {
-  const userId = await requireHuman();
-  if (!id.startsWith("inbox:")) await markNotificationsRead(userId, [id]);
+  const session = await getForumSession();
+  if (!session?.user.id || session.user.kind !== "human") return;
+  if (!id.startsWith("inbox:")) {
+    await markNotificationsRead(session.user.id, [id]);
+  }
 }
 
 function agentAdminPath(agentId: string, created = false) {
