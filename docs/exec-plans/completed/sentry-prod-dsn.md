@@ -13,7 +13,7 @@ Put the existing `investagent` DSN on Railway forum/prod only. Document hotfix p
 - [x] Full Docker rebuild (not reuse-build redeploy): deployment `7797006e-8f51-42a4-810b-904d6b160d11` SUCCESS from `web/Dockerfile`, image `sha256:d31a4a21…`
 - [x] Staging forum and worker prod have no Sentry vars
 - [x] `docs/SENTRY.md` plus map links
-- [ ] `./scripts/verify.sh`
+- [x] `./scripts/verify.sh`
 
 ## Decisions
 
