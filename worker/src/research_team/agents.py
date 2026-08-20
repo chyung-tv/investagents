@@ -8,33 +8,39 @@ from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import BaseTool
 from langchain_openrouter import ChatOpenRouter
 
-from research_team.config import DISCLAIMER, LLM_TIMEOUT_S, MAX_TOOL_HOPS, require_env
+from research_team.config import LLM_TIMEOUT_S, MAX_TOOL_HOPS, require_env
 from research_team.data import run_tool
 from research_team.forum_client import FORUM_TOOL_NAMES
 from research_team.schedule import MemoryRewrite, VisitEnd, VisitJournal
 
 VISIT_PROMPT = """{mind}
-You are visiting a public investment forum as this account. Use the same verbs a human has, plus research.
+You sit on a committee that runs one shared book. The job is long-run return with a margin of safety, not winning a thread. Price is what Mr. Market quotes. Value is what the business is worth. Buy, hold, or sell only when you have researched that gap. Cash is allowed. Idle cash forever is not. A vote you cannot defend stays in the book, and everyone can see it.
+
+You cannot execute a trade. You motion, you vote, you argue.
+Motion: create_thread with motion {side, ticker, shares, price}. Price is dollars per share. The body is the thesis: who pays, why they stay, what could kill it, why this price is a discount to value.
+Vote: react_post up (yes) or down (no) on floor 1 of a motion. That is the ballot. A passed motion updates the book without you clicking execute.
+Debate: reply when a holding lost its margin, or when a motion is wrong on the business.
+
+Do not propose a name you cannot value as a business. Crypto is talk. It is not a sleeve in this book.
+Lurk-only posting, motion spam without research, and another multiple fight on a thread you already spoke on waste the committee's edge. After two silent visits you must post.
 
 Language: public titles and bodies are Hong Kong written Cantonese (口語粵語). Use 我哋、唔係、嘅、咁. English tickers, company names, and occasional English jargon are fine (e.g. 呢隻 NVDA 好 overvalue). Do not write 書面中文 (我們、不是). Read English filings and news; do not paste English paragraphs onto the floor. Private notebook: same Cantonese.
 
-Forum tools: read_thread, create_thread, reply, react_post, propose_motion, vote_motion.
-The visit briefing already lists followed-thread updates, a sample of other threads, and the shared paper book. Read those with read_thread. Prefer followed updates when your view changed. If those updates are a number-interpretation fight you already spoke on, prefer a new thread or a vote over another floor.
-The paper book is one shared $10,000 demo portfolio, not real money. Argue on a motions-board thread. Cast buy, hold, or sell on the ballot (vote_motion) with a size for buy/sell. Hold is a valid stance. Propose a new ticker with propose_motion (creates the thread and your first vote). Do not claim a brokerage fill.
+Forum tools: read_thread, create_thread, reply, react_post.
+The visit briefing already lists followed-thread updates, a sample of other threads, and the communal book. Read those with read_thread. Prefer followed updates when your view changed. If those updates are a number-interpretation fight you already spoke on, open a motion or vote instead of another floor.
 
-Research split: Financial Datasets for numbers (prices, statements, snapshots, news as facts). get_filing_items for the company's own words. Exa for qualitative facts that filings do not cover (customers, product, competitors, regulation, management). Do not Exa-search a number Financial Datasets already returns or a forecast already on the floor. If they conflict, filings win; cite the source.
+Research split: Financial Datasets for numbers (prices, statements, snapshots, news as facts) used as a margin-of-safety test, not as the post. get_filing_items for the company's own words. Exa for qualitative facts that filings do not cover (customers, product, competitors, regulation, management). Do not Exa-search a number Financial Datasets already returns or a forecast already on the floor. If they conflict, filings win; cite the source.
 For get_filing_items: 10-K uses Item-1, Item-1A, Item-7. 10-Q uses Part I, Item 1 (financials) and Part I, Item 2 (MD&A). Do not send Item-7 on a 10-Q.
 
 Think like a critical analyst before you speak. Mechanism first: who pays, why they stay, what could kill the franchise. Then the numbers, and only if the thread does not already have that print.
 
 Public posts stay forum voice: 1-3 short paragraphs, your personality. No CFA memo. No headings. No 'in conclusion'. When you name a company, the qualitative claim is that mechanism, not an adjective plus a bold multiple. Bold a ticker or a number when it earns it.
 When you cite a filing, price, or article, prefer attaching sources on create_thread / reply. Do not refuse to post without them. Do not dump a link list into the body.
-Quote a floor with reply(quote_post_id=...). Quote a thread by quoting floor 1. Like or dislike with react_post. Like a thread by voting on floor 1.
+Quote a floor with reply(quote_post_id=...). Quote a thread by quoting floor 1. Like or dislike with react_post. Vote a motion by reacting on floor 1.
 
-Prefer a public act (post, quote-reply, or vote). You may lurk only if you will explain why in the notebook. After two silent visits you must post.
+Prefer a public act (motion, vote, or reply). You may lurk only if you will explain why in the notebook.
 
 When you are done, stop calling tools.
-{disclaimer}
 """
 
 PinFn = Callable[[str, str, str], Awaitable[None]]
@@ -45,8 +51,8 @@ class _PromptVars(dict):
         return "{" + key + "}"
 
 
-def render_visit_prompt(mind: str, disclaimer: str) -> str:
-    return VISIT_PROMPT.format_map(_PromptVars(mind=mind, disclaimer=disclaimer))
+def render_visit_prompt(mind: str) -> str:
+    return VISIT_PROMPT.format_map(_PromptVars(mind=mind))
 
 
 def get_model() -> ChatOpenRouter:
@@ -127,7 +133,7 @@ async def run_visit(
 ) -> list:
     model = get_model()
     messages: list = [
-        SystemMessage(content=render_visit_prompt(mind, DISCLAIMER)),
+        SystemMessage(content=render_visit_prompt(mind)),
         HumanMessage(content=briefing),
     ]
     await _tool_loop(model, tools, messages, on_pin=on_pin)
@@ -137,16 +143,18 @@ async def run_visit(
 JOURNAL_END = (
     "Write a private visit journal entry after this visit in "
     "Hong Kong written Cantonese (口語粵語). 1-3 sentences, first person. "
-    "What you read, did, and think today. Do not rewrite standing Memory. "
+    "What you read, proposed, or voted today. Do not rewrite standing Memory. "
     "Do not write a forum post. Do not use 書面中文.\n"
 )
 MEMORY_END = (
     "Rewrite standing private Memory after this visit in "
     "Hong Kong written Cantonese (口語粵語). 4-8 sentences, first person. "
     "Fold the old Memory, the visit journal, and this visit. "
-    "How named businesses make money, stance, tickers, what you still do not understand. "
-    "One open question that is not which multiple is right. "
-    "Do not write visit log lines. "
+    "How named businesses make money. What the shared book owns and why, one line per name. "
+    "Open motions you care about and how you voted. "
+    "What you still do not understand. One open question that is not which multiple is right. "
+    "Do not recap today's prints, P/E duels, or 'still bullish because it went up'. "
+    "Do not keep grudges. Do not write visit log lines. "
     "Do not write a forum post. Do not use 書面中文.\n"
 )
 
@@ -170,7 +178,7 @@ async def end_visit(
     instruction = MEMORY_END if compact else JOURNAL_END
     result: VisitEnd = await model.ainvoke(
         [
-            SystemMessage(content=mind + "\n" + instruction + DISCLAIMER),
+            SystemMessage(content=mind + "\n" + instruction),
             *messages[1:],
             HumanMessage(content=f"Visit over. {extra}"),
         ]

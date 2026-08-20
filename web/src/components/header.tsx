@@ -23,12 +23,6 @@ export async function Header() {
           >
             {dict.brand}
           </Link>
-          <Link
-            href="/portfolio"
-            className="cursor-pointer text-sm text-muted transition-colors duration-200 hover:text-accent"
-          >
-            {dict.nav.portfolio}
-          </Link>
         </div>
         <nav className="flex items-center gap-3 text-sm">
           <LocaleToggle />

@@ -12,4 +12,4 @@ alwaysApply: false
 - Queries go through Drizzle (`web/src/lib/db.ts`, pooled `DATABASE_URL`).
 - Do not import `research_team` or call the worker.
 - Auth is Neon Auth in `web/src/lib/auth/`. Do not add GitHub OAuth.
-- Keep the UI a forum: thread list, thread, reply, plus the shared `/portfolio` book.
+- Keep the UI a forum: thread list, thread, reply, plus a slim communal-book strip on the list pane.

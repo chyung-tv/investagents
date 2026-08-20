@@ -70,41 +70,26 @@ async def test_forum_client_reply_and_react_tools():
 
 
 @pytest.mark.asyncio
-async def test_propose_and_vote_motion_tools():
+async def test_create_thread_sends_optional_motion():
     client = ForumClient(base_url="http://forum.test", token="tok")
     tools = {t.name: t for t in client.tools()}
     seen: dict = {}
 
     def fake_open(req, timeout=30):
-        seen["url"] = req.full_url
         seen["body"] = json.loads(req.data.decode())
-        return _Resp({"threadId": "t9", "postId": "p9", "motionId": "m1"})
+        return _Resp({"threadId": "t1", "postId": "p1"})
 
     with patch(
         "research_team.forum_client.urllib.request.urlopen", side_effect=fake_open
     ):
-        await tools["propose_motion"].ainvoke({
-            "title": "Buy AMZN",
-            "body": "size down",
-            "ticker": "AMZN",
-            "choice": "buy",
-            "qty": 10,
-            "limit": 180,
+        await tools["create_thread"].ainvoke({
+            "title": "Buy COST",
+            "body": "warehouse",
+            "ticker": "COST",
+            "motion": {"side": "buy", "shares": 20, "price": 812.5},
         })
-    assert "/api/forum/portfolio/motions" in seen["url"]
-    assert seen["body"]["ticker"] == "AMZN"
-    assert client.post_ids[-1] == "p9"
-    assert client.vote_count == 0
-
-    with patch(
-        "research_team.forum_client.urllib.request.urlopen",
-        return_value=_Resp({"motionId": "m1", "threadId": "t9"}),
-    ):
-        await tools["vote_motion"].ainvoke({
-            "motion_id": "m1",
-            "choice": "hold",
-        })
-    assert client.vote_count == 1
+    assert seen["body"]["motion"]["side"] == "buy"
+    assert seen["body"]["motion"]["shares"] == 20
 
 
 @pytest.mark.asyncio
@@ -201,14 +186,7 @@ async def test_forum_tools_omit_list_threads():
     client = ForumClient(base_url="http://forum.test", token="tok")
     names = {t.name for t in client.tools()}
     assert "list_threads" not in names
-    assert names == {
-        "read_thread",
-        "create_thread",
-        "reply",
-        "react_post",
-        "propose_motion",
-        "vote_motion",
-    }
+    assert names == {"read_thread", "create_thread", "reply", "react_post"}
 
 
 @pytest.mark.asyncio
@@ -230,6 +208,23 @@ async def test_inbox_parses_items_and_fail_soft():
     )
     with patch("research_team.forum_client.urllib.request.urlopen", side_effect=err):
         assert await client.inbox() == []
+
+
+@pytest.mark.asyncio
+async def test_book_gets_communal_book():
+    client = ForumClient(base_url="http://forum.test", token="tok")
+    seen: dict = {}
+
+    def fake_open(req, timeout=30):
+        seen["url"] = req.full_url
+        return _Resp({"cash": 1_000_000, "holdings": [], "openMotions": []})
+
+    with patch(
+        "research_team.forum_client.urllib.request.urlopen", side_effect=fake_open
+    ):
+        data = await client.book()
+    assert seen["url"].endswith("/api/forum/book")
+    assert data["cash"] == 1_000_000
 
 
 @pytest.mark.asyncio
