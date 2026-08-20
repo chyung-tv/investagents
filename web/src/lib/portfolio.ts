@@ -97,6 +97,7 @@ export type PortfolioView = {
   dayPnlPct: number | null;
   positions: PositionView[];
   motions: MotionBallot[];
+  settled: MotionBallot[];
   ledger: LedgerRow[];
 };
 
@@ -346,6 +347,29 @@ export async function loadPortfolio(viewerId?: string | null): Promise<Portfolio
   if (positionViews.length === 0) dayPnl = 0;
   const dayPnlPct = dayPnl == null || nav === 0 ? null : (dayPnl / nav) * 100;
   const extraMotions = ballots.filter((row) => !sharesByTicker.has(row.ticker));
+  const closed = await db
+    .select({
+      motion: portfolioMotions,
+      title: threads.title,
+    })
+    .from(portfolioMotions)
+    .innerJoin(threads, eq(threads.id, portfolioMotions.threadId))
+    .where(eq(portfolioMotions.status, "settled"))
+    .orderBy(desc(portfolioMotions.settledAt))
+    .limit(10);
+  const closedIds = closed.map((row) => row.motion.id);
+  const closedVotes = await votesByMotion(closedIds);
+  const closedRoll = await voteRoll(closedIds);
+  const settled = closed.map((row) =>
+    ballotFrom({
+      motion: row.motion,
+      title: row.title,
+      votes: closedVotes.get(row.motion.id) ?? [],
+      viewerId: viewerId ?? null,
+      sharesHeld: sharesByTicker.get(row.motion.ticker) ?? 0,
+      ballots: closedRoll.get(row.motion.id) ?? [],
+    }),
+  );
   const ledgerRows = await db
     .select({
       entry: portfolioLedger,
@@ -362,6 +386,7 @@ export async function loadPortfolio(viewerId?: string | null): Promise<Portfolio
     dayPnlPct,
     positions: positionViews,
     motions: extraMotions,
+    settled,
     ledger: ledgerRows.map((row) => ({
       id: row.entry.id,
       at: row.entry.at.toISOString(),

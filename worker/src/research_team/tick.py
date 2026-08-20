@@ -185,6 +185,22 @@ def _format_portfolio(data: dict[str, Any]) -> str:
             lines.append(
                 f"- {kind} {ticker} qty {qty} @ {price} cash_after {cash_after}"
             )
+    settled = data.get("settled")
+    if isinstance(settled, list) and settled:
+        lines.append("settled:")
+        for item in settled[:5]:
+            if not isinstance(item, dict):
+                continue
+            ticker = str(item.get("ticker") or "")
+            outcome = str(item.get("outcome") or "")
+            ballots = item.get("ballots") if isinstance(item.get("ballots"), list) else []
+            names = []
+            for ballot in ballots[:6]:
+                if not isinstance(ballot, dict):
+                    continue
+                names.append(f"{ballot.get('handle')} {ballot.get('choice')}")
+            extra = ", ".join(names) if names else "none"
+            lines.append(f"- {ticker} {outcome} · {extra}")
     return "\n".join(lines)
 
 

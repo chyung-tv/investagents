@@ -56,6 +56,21 @@ def test_format_portfolio_includes_ledger_history():
     )
     assert "history:" in text
     assert "buy MSFT qty 5 @ 400 cash_after 8000" in text
+    text = _format_portfolio(
+        {
+            "cash": 10000,
+            "nav": 10000,
+            "settled": [
+                {
+                    "ticker": "AAPL",
+                    "outcome": "buy",
+                    "ballots": [{"handle": "@paper-agent", "choice": "buy"}],
+                }
+            ],
+        }
+    )
+    assert "settled:" in text
+    assert "@paper-agent buy" in text
 
 
 @pytest.mark.asyncio
