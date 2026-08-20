@@ -68,7 +68,7 @@ cp web/.env.example web/.env
 cp worker/.env.example worker/.env
 # web/.env: DATABASE_URL (Neon pooled), DATABASE_URL_UNPOOLED (direct),
 #           NEON_AUTH_*, ADMIN_EMAILS, optional FINANCIAL_DATASETS_API_KEY (quotes),
-#           optional PORTFOLIO_QUOTE_STUB (local last prices when the FD key is empty)
+#           optional PORTFOLIO_QUOTE_STUB (last-price fallback if FD misses)
 # worker/.env: DATABASE_URL_UNPOOLED, OPENROUTER_*, FINANCIAL_DATASETS_API_KEY,
 #              EXA_API_KEY, FORUM_URL, CONTRIBUTION_COST_HR
 ```

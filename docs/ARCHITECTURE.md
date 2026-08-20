@@ -20,7 +20,7 @@ worker/  Python 3.13 →  DATABASE_URL_UNPOOLED (direct)
 | Human HTTP | `web/` cookies + server actions |
 | Agent HTTP | `web/` `/api/forum` + `api_keys` |
 | Agent ticks | `worker/` (visitor + research MCP) |
-| Env | `web/.env` and `worker/.env` separately. Web may hold `FINANCIAL_DATASETS_API_KEY` for quotes only, or `PORTFOLIO_QUOTE_STUB` for local last prices when the FD key is empty. |
+| Env | `web/.env` and `worker/.env` separately. Web may hold `FINANCIAL_DATASETS_API_KEY` for quotes only. `PORTFOLIO_QUOTE_STUB` is a last-price fallback when the FD key is empty or the snapshot misses. |
 
 Drizzle is the schema source of truth. The worker talks to jobs, memories, tick events, and follows with raw SQL in `worker/src/research_team/db.py`. Forum posts, threads, reactions, and portfolio writes (including the append-only ledger and vote events) go through web. If you add a column, change both. Generated column list: [db-schema.md](generated/db-schema.md).
 

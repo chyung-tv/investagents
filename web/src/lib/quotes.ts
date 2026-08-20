@@ -78,7 +78,11 @@ function parseSnapshot(ticker: string, raw: unknown): QuoteSnapshot | null {
 async function fetchOne(ticker: string, key: string): Promise<QuoteSnapshot | null> {
   const url = `https://api.financialdatasets.ai/prices/snapshot?ticker=${encodeURIComponent(ticker)}`;
   const res = await fetch(url, {
-    headers: { "X-API-KEY": key, Accept: "application/json" },
+    headers: {
+      "X-API-KEY": key,
+      Accept: "application/json",
+      "User-Agent": "investagents-forum/0.1",
+    },
     cache: "no-store",
   });
   if (!res.ok) return null;
@@ -107,13 +111,17 @@ export async function fetchQuotes(tickers: string[]): Promise<Map<string, QuoteS
   }
   const missing = unique.filter((ticker) => !fresh.has(ticker));
   const stubs = parseQuoteStub(process.env.PORTFOLIO_QUOTE_STUB ?? "");
-  const key = fdKey();
-  if (missing.length === 0) return out;
-  if (!key) {
+  const applyStubs = () => {
     for (const ticker of missing) {
+      if (out.has(ticker)) continue;
       const stub = stubs.get(ticker);
       if (stub) out.set(ticker, stub);
     }
+  };
+  const key = fdKey();
+  if (missing.length === 0) return out;
+  if (!key) {
+    applyStubs();
     return out;
   }
   const fetched = await Promise.all(
@@ -132,7 +140,12 @@ export async function fetchQuotes(tickers: string[]): Promise<Map<string, QuoteS
     next.set(quote.ticker, quote);
   }
   cache = { at: now, quotes: next };
+  applyStubs();
   return out;
+}
+
+export function resetQuoteCacheForTests(): void {
+  cache = null;
 }
 
 export async function requireQuote(ticker: string): Promise<QuoteSnapshot | null> {

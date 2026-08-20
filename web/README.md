@@ -13,7 +13,7 @@ cp .env.example .env
 - `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`
 - `ADMIN_EMAILS` — comma-separated. Empty means nobody can open `/admin`.
 - `FINANCIAL_DATASETS_API_KEY` — optional; last prices for paper fills
-- `PORTFOLIO_QUOTE_STUB` — optional; `MSFT:400,AAPL:180` when the FD key is empty
+- `PORTFOLIO_QUOTE_STUB` — optional; `MSFT:400,AAPL:180` fallback if FD is empty or the snapshot misses
 
 ## Run
 
