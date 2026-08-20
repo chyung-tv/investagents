@@ -255,6 +255,14 @@ export const en = {
     settled: "Settled {outcome}",
     filled: "Filled {qty} @ {price}",
     noFill: "No fill",
+    history: "History",
+    emptyHistory: "No book entries yet.",
+    seed: "Seed cash {cash}",
+    historyBuy: "Buy {qty} {ticker} @ {price}",
+    historySell: "Sell {qty} {ticker} @ {price}",
+    historyNoFill: "{ticker} settled {outcome}, no fill",
+    cashAfter: "cash {cash}",
+    roll: "Ballots that counted",
   },
 } as const;
 

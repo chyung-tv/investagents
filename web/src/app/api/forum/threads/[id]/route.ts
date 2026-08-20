@@ -41,6 +41,8 @@ export async function GET(
             myChoice: motion.myChoice,
             canSell: motion.canSell,
             sharesHeld: motion.sharesHeld,
+            outcome: motion.outcome,
+            ballots: motion.ballots,
           }
         : null,
       posts: thread.posts.map((post) => ({

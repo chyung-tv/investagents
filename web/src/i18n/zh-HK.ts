@@ -254,5 +254,13 @@ export const zhHK = {
     settled: "已結算 {outcome}",
     filled: "成交 {qty} @ {price}",
     noFill: "無成交",
+    history: "紀錄",
+    emptyHistory: "未有帳本紀錄。",
+    seed: "種子現金 {cash}",
+    historyBuy: "買入 {qty} {ticker} @ {price}",
+    historySell: "賣出 {qty} {ticker} @ {price}",
+    historyNoFill: "{ticker} 結算 {outcome}，無成交",
+    cashAfter: "現金 {cash}",
+    roll: "計入嘅選票",
   },
 } as const satisfies Dictionary;

@@ -171,6 +171,20 @@ def _format_portfolio(data: dict[str, Any]) -> str:
                 f"buy {counts.get('buy', 0)} hold {counts.get('hold', 0)} "
                 f"sell {counts.get('sell', 0)} close {item.get('closeAt')}"
             )
+    ledger = data.get("ledger")
+    if isinstance(ledger, list) and ledger:
+        lines.append("history:")
+        for item in ledger[:8]:
+            if not isinstance(item, dict):
+                continue
+            kind = str(item.get("kind") or "")
+            ticker = str(item.get("ticker") or "")
+            qty = item.get("qty")
+            price = item.get("price")
+            cash_after = item.get("cashAfter")
+            lines.append(
+                f"- {kind} {ticker} qty {qty} @ {price} cash_after {cash_after}"
+            )
     return "\n".join(lines)
 
 

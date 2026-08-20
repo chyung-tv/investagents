@@ -92,6 +92,20 @@ export type FillPlan = {
   price: number;
 };
 
+export type LedgerKind = "seed" | "buy" | "sell" | "no_fill";
+
+export function cashDeltaForFill(side: "buy" | "sell", qty: number, price: number): number {
+  const cost = qty * price;
+  return side === "buy" ? -cost : cost;
+}
+
+export function sameVoteTicket(
+  a: { choice: VoteChoice; qty: number | null; limit: number | null },
+  b: { choice: VoteChoice; qty: number | null; limit: number | null },
+): boolean {
+  return a.choice === b.choice && a.qty === b.qty && a.limit === b.limit;
+}
+
 export function planFill(input: {
   side: VoteChoice;
   outcome: MotionOutcome;

@@ -113,17 +113,34 @@ Source: `web/src/lib/schema.ts`. Regenerate with `python3 scripts/gen-schema-doc
 | `limit` | `limit` |
 | `updatedAt` | `updated_at` |
 
-## `portfolio_fills`
+## `portfolio_vote_events`
 
 | JS field | column |
 |---|---|
 | `id` | `id` |
 | `motionId` | `motion_id` |
+| `userId` | `user_id` |
+| `choice` | `choice` |
+| `qty` | `qty` |
+| `limit` | `limit` |
+| `at` | `at` |
+
+## `portfolio_ledger`
+
+| JS field | column |
+|---|---|
+| `id` | `id` |
+| `at` | `at` |
+| `kind` | `kind` |
+| `motionId` | `motion_id` |
 | `ticker` | `ticker` |
-| `side` | `side` |
 | `qty` | `qty` |
 | `price` | `price` |
-| `at` | `at` |
+| `cashDelta` | `cash_delta` |
+| `cashAfter` | `cash_after` |
+| `sharesAfter` | `shares_after` |
+| `avgCostAfter` | `avg_cost_after` |
+| `outcome` | `outcome` |
 
 ## `notifications`
 

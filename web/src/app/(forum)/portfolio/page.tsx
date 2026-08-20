@@ -3,11 +3,48 @@ import { MotionComposeFields } from "@/components/motion-compose-fields";
 import { MotionVote } from "@/components/motion-vote";
 import { createThreadAction } from "@/app/actions";
 import { SourceFields } from "@/components/source-fields";
+import { fill } from "@/i18n/dictionary";
 import { getMessages } from "@/i18n/get-locale";
-import { formatPct, formatUsd, pnlClass } from "@/lib/portfolio-format";
+import type { Dictionary } from "@/i18n/en";
+import type { LedgerRow } from "@/lib/portfolio";
+import { formatPct, formatQty, formatUsd, pnlClass } from "@/lib/portfolio-format";
 import { loadPortfolio } from "@/lib/portfolio";
+import { formatWhen } from "@/lib/tick-log";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
+
+function outcomeCopy(outcome: string | null, dict: Dictionary): string {
+  if (outcome === "buy") return dict.portfolio.outcomeBuy;
+  if (outcome === "sell") return dict.portfolio.outcomeSell;
+  if (outcome === "hold") return dict.portfolio.outcomeHold;
+  if (outcome === "hold_no_quorum") return dict.portfolio.outcomeHoldNo;
+  return outcome ?? dict.portfolio.noFill;
+}
+
+function ledgerCopy(row: LedgerRow, dict: Dictionary): string {
+  if (row.kind === "seed") {
+    return fill(dict.portfolio.seed, { cash: formatUsd(row.cashAfter) });
+  }
+  if (row.kind === "buy") {
+    return fill(dict.portfolio.historyBuy, {
+      qty: formatQty(row.qty),
+      ticker: row.ticker ?? "",
+      price: formatUsd(row.price),
+    });
+  }
+  if (row.kind === "sell") {
+    return fill(dict.portfolio.historySell, {
+      qty: formatQty(row.qty),
+      ticker: row.ticker ?? "",
+      price: formatUsd(row.price),
+    });
+  }
+  return fill(dict.portfolio.historyNoFill, {
+    ticker: row.ticker ?? "",
+    outcome: outcomeCopy(row.outcome, dict),
+  });
+}
 
 export default async function PortfolioPage({
   searchParams,
@@ -16,7 +53,7 @@ export default async function PortfolioPage({
 }) {
   const params = await searchParams;
   const data = await loadForumShell(params);
-  const { dict } = await getMessages();
+  const { dict, locale } = await getMessages();
   const book = await loadPortfolio(data.viewerId);
   const openOnBook = [
     ...book.positions.map((row) => row.motion).filter((row) => row != null),
@@ -112,6 +149,43 @@ export default async function PortfolioPage({
             ))
           )}
         </div>
+        <h2 className="mt-8 text-sm font-semibold">{dict.portfolio.history}</h2>
+        <ol className="mt-3 flex flex-col gap-2 text-sm">
+          {book.ledger.length === 0 ? (
+            <li className="text-muted">{dict.portfolio.emptyHistory}</li>
+          ) : (
+            book.ledger.map((row) => (
+              <li
+                key={row.id}
+                className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border/70 py-2"
+              >
+                <time
+                  className="shrink-0 text-xs text-muted"
+                  dateTime={row.at}
+                >
+                  {formatWhen(new Date(row.at), Date.now(), locale)}
+                </time>
+                <span className="min-w-0">
+                  {ledgerCopy(row, dict)}
+                  {row.threadId ? (
+                    <>
+                      {" "}
+                      <Link
+                        href={`/t/${row.threadId}`}
+                        className="text-xs text-accent transition-colors duration-200 hover:text-foreground"
+                      >
+                        {dict.portfolio.thread}
+                      </Link>
+                    </>
+                  ) : null}
+                </span>
+                <span className="ml-auto font-mono text-xs text-muted">
+                  {fill(dict.portfolio.cashAfter, { cash: formatUsd(row.cashAfter) })}
+                </span>
+              </li>
+            ))
+          )}
+        </ol>
         {data.canPost ? (
           <form
             action={createThreadAction}

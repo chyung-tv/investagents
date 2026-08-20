@@ -194,8 +194,10 @@ export const portfolioVotes = pgTable(
   ],
 );
 
-export const portfolioFills = pgTable(
-  "portfolio_fills",
+export const LEDGER_SEED_ID = "seed";
+
+export const portfolioVoteEvents = pgTable(
+  "portfolio_vote_events",
   {
     id: text("id")
       .primaryKey()
@@ -203,13 +205,44 @@ export const portfolioFills = pgTable(
     motionId: text("motion_id")
       .notNull()
       .references(() => portfolioMotions.id, { onDelete: "cascade" }),
-    ticker: text("ticker").notNull(),
-    side: text("side").notNull(),
-    qty: integer("qty").notNull(),
-    price: numeric("price", { precision: 18, scale: 4 }).notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    choice: text("choice").notNull(),
+    qty: integer("qty"),
+    limit: numeric("limit", { precision: 18, scale: 4 }),
     at: timestamp("at", { mode: "date" }).notNull().defaultNow(),
   },
-  (table) => [index("portfolio_fills_motion_idx").on(table.motionId)],
+  (table) => [
+    index("portfolio_vote_events_motion_at_idx").on(table.motionId, table.at),
+    index("portfolio_vote_events_user_idx").on(table.userId),
+  ],
+);
+
+export const portfolioLedger = pgTable(
+  "portfolio_ledger",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    at: timestamp("at", { mode: "date" }).notNull().defaultNow(),
+    kind: text("kind").notNull(),
+    motionId: text("motion_id").references(() => portfolioMotions.id, {
+      onDelete: "set null",
+    }),
+    ticker: text("ticker"),
+    qty: integer("qty"),
+    price: numeric("price", { precision: 18, scale: 4 }),
+    cashDelta: numeric("cash_delta", { precision: 18, scale: 2 }).notNull(),
+    cashAfter: numeric("cash_after", { precision: 18, scale: 2 }).notNull(),
+    sharesAfter: integer("shares_after"),
+    avgCostAfter: numeric("avg_cost_after", { precision: 18, scale: 4 }),
+    outcome: text("outcome"),
+  },
+  (table) => [
+    index("portfolio_ledger_at_idx").on(table.at),
+    index("portfolio_ledger_motion_idx").on(table.motionId),
+  ],
 );
 
 export const notifications = pgTable(
@@ -337,7 +370,8 @@ export const portfolioMotionsRelations = relations(portfolioMotions, ({ one, man
     references: [users.id],
   }),
   votes: many(portfolioVotes),
-  fills: many(portfolioFills),
+  voteEvents: many(portfolioVoteEvents),
+  ledger: many(portfolioLedger),
 }));
 
 export const portfolioVotesRelations = relations(portfolioVotes, ({ one }) => ({
@@ -348,9 +382,17 @@ export const portfolioVotesRelations = relations(portfolioVotes, ({ one }) => ({
   user: one(users, { fields: [portfolioVotes.userId], references: [users.id] }),
 }));
 
-export const portfolioFillsRelations = relations(portfolioFills, ({ one }) => ({
+export const portfolioVoteEventsRelations = relations(portfolioVoteEvents, ({ one }) => ({
   motion: one(portfolioMotions, {
-    fields: [portfolioFills.motionId],
+    fields: [portfolioVoteEvents.motionId],
+    references: [portfolioMotions.id],
+  }),
+  user: one(users, { fields: [portfolioVoteEvents.userId], references: [users.id] }),
+}));
+
+export const portfolioLedgerRelations = relations(portfolioLedger, ({ one }) => ({
+  motion: one(portfolioMotions, {
+    fields: [portfolioLedger.motionId],
     references: [portfolioMotions.id],
   }),
 }));

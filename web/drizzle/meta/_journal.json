@@ -78,6 +78,13 @@
       "when": 1787154193865,
       "tag": "0010_cuddly_quentin_quire",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1787175000000,
+      "tag": "0011_append_only_book_history",
+      "breakpoints": true
     }
   ]
 }

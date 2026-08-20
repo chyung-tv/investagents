@@ -20,6 +20,8 @@ test("dictionaries share keys", () => {
   expect(en.nav.portfolio).toBe("Portfolio");
   expect(zh.inbox.replied).toContain("{handle}");
   expect(en.nav.notifications).toBe("Notifications");
+  expect(en.portfolio.history).toBe("History");
+  expect(zh.portfolio.roll).toBe("計入嘅選票");
 });
 
 test("fill substitutes placeholders", () => {

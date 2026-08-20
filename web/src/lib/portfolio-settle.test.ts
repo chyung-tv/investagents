@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import {
   applyFill,
+  cashDeltaForFill,
   motionDeadlines,
   MOTION_CLOSE_MS,
   MOTION_EXTEND_MS,
@@ -8,6 +9,7 @@ import {
   pickSide,
   planFill,
   roundQty,
+  sameVoteTicket,
   shouldNotify,
   shouldSettle,
   tallyVotes,
@@ -167,6 +169,24 @@ test("applyFill updates cash and average cost", () => {
     avgCost: added.avgCost,
   });
   expect(sold).toEqual({ cash: 1300, shares: 0, avgCost: 0 });
+  expect(cashDeltaForFill("buy", 10, 20)).toBe(-200);
+  expect(cashDeltaForFill("sell", 20, 40)).toBe(800);
+  expect(1000 + cashDeltaForFill("buy", 10, 20) + cashDeltaForFill("buy", 10, 30) + cashDeltaForFill("sell", 20, 40)).toBe(1300);
+});
+
+test("sameVoteTicket ignores no-op changes", () => {
+  expect(
+    sameVoteTicket(
+      { choice: "buy", qty: 5, limit: 400 },
+      { choice: "buy", qty: 5, limit: 400 },
+    ),
+  ).toBe(true);
+  expect(
+    sameVoteTicket(
+      { choice: "buy", qty: 5, limit: 400 },
+      { choice: "hold", qty: null, limit: null },
+    ),
+  ).toBe(false);
 });
 
 test("clock 24h notify and 36h settle", () => {

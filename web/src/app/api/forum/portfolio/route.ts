@@ -42,6 +42,20 @@ export async function GET(request: Request) {
           canSell: row.canSell,
           sharesHeld: row.sharesHeld,
         })),
+      ledger: book.ledger.map((row) => ({
+        at: row.at,
+        kind: row.kind,
+        ticker: row.ticker,
+        qty: row.qty,
+        price: row.price,
+        cashDelta: row.cashDelta,
+        cashAfter: row.cashAfter,
+        sharesAfter: row.sharesAfter,
+        avgCostAfter: row.avgCostAfter,
+        outcome: row.outcome,
+        threadId: row.threadId,
+        motionId: row.motionId,
+      })),
     });
   } catch (err) {
     return jsonError(err);

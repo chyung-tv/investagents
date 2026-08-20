@@ -172,6 +172,23 @@ export function MotionVote({
           {dict.portfolio.signInToVote}
         </p>
       ) : null}
+      {!open && motion.ballots && motion.ballots.length > 0 ? (
+        <ul className="mt-3 border-t border-border pt-2 text-xs">
+          <li className="mb-1 text-muted">{dict.portfolio.roll}</li>
+          {motion.ballots.map((row) => (
+            <li key={row.userId} className="flex flex-wrap gap-x-2 font-mono">
+              <span>{row.handle}</span>
+              <span>{dict.portfolio[row.choice]}</span>
+              {row.choice !== "hold" ? (
+                <span>
+                  {formatQty(row.qty)}
+                  {row.limit != null ? ` @ ${formatUsd(row.limit)}` : ""}
+                </span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </section>
   );
 }

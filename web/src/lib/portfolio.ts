@@ -1,4 +1,5 @@
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { publicAlias } from "./agent-id";
 import { db } from "./db";
 import {
   asMoney,
@@ -15,11 +16,22 @@ import { advanceClock, ensurePortfolio } from "./portfolio-write";
 import { fetchQuotes, type QuoteSnapshot } from "./quotes";
 import {
   notifications,
+  portfolioLedger,
   portfolioMotions,
   portfolioPositions,
   portfolioVotes,
   threads,
+  users,
 } from "./schema";
+
+export type MotionVoter = {
+  userId: string;
+  handle: string;
+  kind: string;
+  choice: VoteChoice;
+  qty: number | null;
+  limit: number | null;
+};
 
 export type MotionBallot = {
   id: string;
@@ -44,6 +56,23 @@ export type MotionBallot = {
   myLimit: number | null;
   canSell: boolean;
   sharesHeld: number;
+  ballots: MotionVoter[] | null;
+};
+
+export type LedgerRow = {
+  id: string;
+  at: string;
+  kind: string;
+  motionId: string | null;
+  threadId: string | null;
+  ticker: string | null;
+  qty: number | null;
+  price: number | null;
+  cashDelta: number;
+  cashAfter: number;
+  sharesAfter: number | null;
+  avgCostAfter: number | null;
+  outcome: string | null;
 };
 
 export type PositionView = {
@@ -68,6 +97,7 @@ export type PortfolioView = {
   dayPnlPct: number | null;
   positions: PositionView[];
   motions: MotionBallot[];
+  ledger: LedgerRow[];
 };
 
 function ticketsOf(
@@ -92,6 +122,7 @@ function ballotFrom(input: {
   votes: { userId: string; choice: string; qty: number | null; limit: string | null }[];
   viewerId: string | null;
   sharesHeld: number;
+  ballots: MotionVoter[] | null;
 }): MotionBallot {
   const tickets = ticketsOf(input.votes);
   const counts = tallyVotes(tickets);
@@ -129,6 +160,7 @@ function ballotFrom(input: {
     myLimit: mine?.limit == null ? null : asMoney(mine.limit),
     canSell: input.sharesHeld > 0,
     sharesHeld: input.sharesHeld,
+    ballots: input.ballots,
   };
 }
 
@@ -161,6 +193,40 @@ async function votesByMotion(motionIds: string[]) {
   return map;
 }
 
+async function voteRoll(motionIds: string[]): Promise<Map<string, MotionVoter[]>> {
+  const map = new Map<string, MotionVoter[]>();
+  if (motionIds.length === 0) return map;
+  const rows = await db
+    .select({
+      motionId: portfolioVotes.motionId,
+      userId: portfolioVotes.userId,
+      handle: users.handle,
+      name: users.name,
+      kind: users.kind,
+      choice: portfolioVotes.choice,
+      qty: portfolioVotes.qty,
+      limit: portfolioVotes.limit,
+    })
+    .from(portfolioVotes)
+    .innerJoin(users, eq(users.id, portfolioVotes.userId))
+    .where(inArray(portfolioVotes.motionId, motionIds));
+  for (const row of rows) {
+    const choice = parseChoice(row.choice);
+    if (!choice) continue;
+    const list = map.get(row.motionId) ?? [];
+    list.push({
+      userId: row.userId,
+      handle: publicAlias(row.handle, row.name),
+      kind: row.kind,
+      choice,
+      qty: row.qty,
+      limit: row.limit == null ? null : asMoney(row.limit),
+    });
+    map.set(row.motionId, list);
+  }
+  return map;
+}
+
 export async function getMotionByThreadId(
   threadId: string,
   viewerId?: string | null,
@@ -182,12 +248,15 @@ export async function getMotionByThreadId(
     .where(eq(portfolioPositions.ticker, row.motion.ticker))
     .limit(1);
   const votes = await votesByMotion([row.motion.id]);
+  const settled = row.motion.status !== "open";
+  const roll = settled ? await voteRoll([row.motion.id]) : null;
   return ballotFrom({
     motion: row.motion,
     title: row.title,
     votes: votes.get(row.motion.id) ?? [],
     viewerId: viewerId ?? null,
     sharesHeld: held?.shares ?? 0,
+    ballots: settled ? (roll?.get(row.motion.id) ?? []) : null,
   });
 }
 
@@ -221,6 +290,7 @@ export async function loadPortfolio(viewerId?: string | null): Promise<Portfolio
       votes: votes.get(row.motion.id) ?? [],
       viewerId: viewerId ?? null,
       sharesHeld: sharesByTicker.get(row.motion.ticker) ?? 0,
+      ballots: null,
     }),
   );
   const ballotByTicker = new Map(ballots.map((row) => [row.ticker, row]));
@@ -276,6 +346,15 @@ export async function loadPortfolio(viewerId?: string | null): Promise<Portfolio
   if (positionViews.length === 0) dayPnl = 0;
   const dayPnlPct = dayPnl == null || nav === 0 ? null : (dayPnl / nav) * 100;
   const extraMotions = ballots.filter((row) => !sharesByTicker.has(row.ticker));
+  const ledgerRows = await db
+    .select({
+      entry: portfolioLedger,
+      threadId: portfolioMotions.threadId,
+    })
+    .from(portfolioLedger)
+    .leftJoin(portfolioMotions, eq(portfolioMotions.id, portfolioLedger.motionId))
+    .orderBy(desc(portfolioLedger.at), desc(portfolioLedger.id))
+    .limit(50);
   return {
     cash: book.cash,
     nav,
@@ -283,6 +362,21 @@ export async function loadPortfolio(viewerId?: string | null): Promise<Portfolio
     dayPnlPct,
     positions: positionViews,
     motions: extraMotions,
+    ledger: ledgerRows.map((row) => ({
+      id: row.entry.id,
+      at: row.entry.at.toISOString(),
+      kind: row.entry.kind,
+      motionId: row.entry.motionId,
+      threadId: row.threadId ?? null,
+      ticker: row.entry.ticker,
+      qty: row.entry.qty,
+      price: row.entry.price == null ? null : asMoney(row.entry.price),
+      cashDelta: asMoney(row.entry.cashDelta),
+      cashAfter: asMoney(row.entry.cashAfter),
+      sharesAfter: row.entry.sharesAfter,
+      avgCostAfter: row.entry.avgCostAfter == null ? null : asMoney(row.entry.avgCostAfter),
+      outcome: row.entry.outcome,
+    })),
   };
 }
 

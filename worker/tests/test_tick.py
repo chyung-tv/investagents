@@ -3,7 +3,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from research_team.tick import _await_step, fail_open_tick, run_tick, visit_briefing
+from research_team.tick import (
+    _await_step,
+    _format_portfolio,
+    fail_open_tick,
+    run_tick,
+    visit_briefing,
+)
 
 
 def test_visit_briefing_includes_memory_and_streak():
@@ -30,6 +36,26 @@ def test_visit_briefing_counts_lurks():
     assert "Silent visits in a row: 0." in text
     assert "FOLLOWING UPDATES:\n(none)" in text
     assert "DISCOVERY:\n(none)" in text
+
+
+def test_format_portfolio_includes_ledger_history():
+    text = _format_portfolio(
+        {
+            "cash": 8000,
+            "nav": 10000,
+            "ledger": [
+                {
+                    "kind": "buy",
+                    "ticker": "MSFT",
+                    "qty": 5,
+                    "price": 400,
+                    "cashAfter": 8000,
+                }
+            ],
+        }
+    )
+    assert "history:" in text
+    assert "buy MSFT qty 5 @ 400 cash_after 8000" in text
 
 
 @pytest.mark.asyncio
