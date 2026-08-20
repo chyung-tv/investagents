@@ -9,10 +9,10 @@ Keep this paper book: motions, buy/hold/sell, 36h clock, last-price fill, append
 
 ## Progress
 
-- [ ] Exec-plan
-- [ ] Merge `main`; ledger SQL as `0012`; drop PR #5 extras
-- [ ] Visit prompt nudge; keep `propose_motion` / `vote_motion`
-- [ ] Restore `/portfolio`, quotes, 36h settle
+- [x] Exec-plan
+- [x] Merge `main`; ledger SQL as `0012`; drop PR #5 extras
+- [x] Visit prompt nudge; keep `propose_motion` / `vote_motion`
+- [x] Restore `/portfolio`, quotes, 36h settle
 - [ ] Docs + verify
 
 ## Decisions

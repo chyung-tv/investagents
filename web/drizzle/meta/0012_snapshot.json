@@ -1,6 +1,6 @@
 {
-  "id": "bb7935b3-dd08-4391-8050-dc55a9ef83ab",
-  "prevId": "04e4386b-3af9-4604-ac23-b4b8477628e6",
+  "id": "252c750b-55ee-4b0c-8d98-19c35075d4d0",
+  "prevId": "bb7935b3-dd08-4391-8050-dc55a9ef83ab",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -448,92 +448,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.portfolio_fills": {
-      "name": "portfolio_fills",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "motion_id": {
-          "name": "motion_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "ticker": {
-          "name": "ticker",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "side": {
-          "name": "side",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "qty": {
-          "name": "qty",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "price": {
-          "name": "price",
-          "type": "numeric(18, 4)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "at": {
-          "name": "at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "portfolio_fills_motion_idx": {
-          "name": "portfolio_fills_motion_idx",
-          "columns": [
-            {
-              "expression": "motion_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "portfolio_fills_motion_id_portfolio_motions_id_fk": {
-          "name": "portfolio_fills_motion_id_portfolio_motions_id_fk",
-          "tableFrom": "portfolio_fills",
-          "tableTo": "portfolio_motions",
-          "columnsFrom": [
-            "motion_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.portfolio_motions": {
       "name": "portfolio_motions",
       "schema": "",
@@ -555,37 +469,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "post_id": {
-          "name": "post_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "side": {
-          "name": "side",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "shares": {
-          "name": "shares",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "price": {
-          "name": "price",
-          "type": "numeric(18, 4)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "thesis": {
-          "name": "thesis",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
         },
         "status": {
           "name": "status",
@@ -633,12 +516,6 @@
         },
         "outcome": {
           "name": "outcome",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "fail_reason": {
-          "name": "fail_reason",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -724,19 +601,6 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "portfolio_motions_post_id_posts_id_fk": {
-          "name": "portfolio_motions_post_id_posts_id_fk",
-          "tableFrom": "portfolio_motions",
-          "tableTo": "posts",
-          "columnsFrom": [
-            "post_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
         "portfolio_motions_opener_id_users_id_fk": {
           "name": "portfolio_motions_opener_id_users_id_fk",
           "tableFrom": "portfolio_motions",
@@ -786,13 +650,6 @@
           "type": "numeric(18, 4)",
           "primaryKey": false,
           "notNull": true
-        },
-        "thesis": {
-          "name": "thesis",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
         }
       },
       "indexes": {},
@@ -1363,6 +1220,257 @@
           ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.portfolio_vote_events": {
+      "name": "portfolio_vote_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "motion_id": {
+          "name": "motion_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "choice": {
+          "name": "choice",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qty": {
+          "name": "qty",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "limit": {
+          "name": "limit",
+          "type": "numeric(18, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "at": {
+          "name": "at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "portfolio_vote_events_motion_at_idx": {
+          "name": "portfolio_vote_events_motion_at_idx",
+          "columns": [
+            {
+              "expression": "motion_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "portfolio_vote_events_user_idx": {
+          "name": "portfolio_vote_events_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "portfolio_vote_events_motion_id_portfolio_motions_id_fk": {
+          "name": "portfolio_vote_events_motion_id_portfolio_motions_id_fk",
+          "tableFrom": "portfolio_vote_events",
+          "tableTo": "portfolio_motions",
+          "columnsFrom": [
+            "motion_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "portfolio_vote_events_user_id_users_id_fk": {
+          "name": "portfolio_vote_events_user_id_users_id_fk",
+          "tableFrom": "portfolio_vote_events",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.portfolio_ledger": {
+      "name": "portfolio_ledger",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "at": {
+          "name": "at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "motion_id": {
+          "name": "motion_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ticker": {
+          "name": "ticker",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qty": {
+          "name": "qty",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "price": {
+          "name": "price",
+          "type": "numeric(18, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cash_delta": {
+          "name": "cash_delta",
+          "type": "numeric(18, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cash_after": {
+          "name": "cash_after",
+          "type": "numeric(18, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shares_after": {
+          "name": "shares_after",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avg_cost_after": {
+          "name": "avg_cost_after",
+          "type": "numeric(18, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "portfolio_ledger_at_idx": {
+          "name": "portfolio_ledger_at_idx",
+          "columns": [
+            {
+              "expression": "at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "portfolio_ledger_motion_idx": {
+          "name": "portfolio_ledger_motion_idx",
+          "columns": [
+            {
+              "expression": "motion_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "portfolio_ledger_motion_id_portfolio_motions_id_fk": {
+          "name": "portfolio_ledger_motion_id_portfolio_motions_id_fk",
+          "tableFrom": "portfolio_ledger",
+          "tableTo": "portfolio_motions",
+          "columnsFrom": [
+            "motion_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
