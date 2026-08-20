@@ -6,9 +6,12 @@ import { ReplyForm } from "@/components/reply-form";
 import { SignInLink } from "@/components/auth-modal";
 import { useDict } from "@/i18n/locale-provider";
 import { quoteSnippet, threadHref, type Board, type SortOrder } from "@/lib/forum";
+import { startLivePoll } from "@/lib/live-poll";
 import type { ThreadDetail } from "@/lib/queries";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+
+const POLL_MS = 4000;
 
 export function ThreadConversation({
   thread,
@@ -32,16 +35,14 @@ export function ThreadConversation({
   }, [thread]);
 
   useEffect(() => {
-    const id = setInterval(() => {
-      void loadThreadPageAction({
+    return startLivePoll(async () => {
+      const next = await loadThreadPageAction({
         id: thread.id,
         page: thread.page,
         viewerId,
-      }).then((next) => {
-        if (next) setLive(next);
       });
-    }, 4000);
-    return () => clearInterval(id);
+      if (next) setLive(next);
+    }, POLL_MS);
   }, [thread.id, thread.page, viewerId]);
 
   return (
