@@ -1,10 +1,10 @@
 "use client";
 
-import { loadAgentRunViewAction, runAgentNowAction } from "@/app/actions";
+import { runAgentNowAction } from "@/app/actions";
 import type { AgentRunView, RunTickDto } from "@/lib/agent-run";
 import { fill } from "@/i18n/dictionary";
 import { useDict } from "@/i18n/locale-provider";
-import { startLivePoll } from "@/lib/live-poll";
+import { fetchLiveJson, startLivePoll } from "@/lib/live-poll";
 import { formatWhen, shortJobId } from "@/lib/tick-log";
 import { useEffect, useState } from "react";
 import { SubmitButton } from "./submit-button";
@@ -30,7 +30,9 @@ export function AgentRunPanel({
   useEffect(() => {
     if (!inflight) return;
     return startLivePoll(async () => {
-      const next = await loadAgentRunViewAction(agentId);
+      const next = await fetchLiveJson<AgentRunView>(
+        `/api/live/admin/run/${encodeURIComponent(agentId)}`,
+      );
       if (next) setView(next);
     }, 4000);
   }, [agentId, inflight]);

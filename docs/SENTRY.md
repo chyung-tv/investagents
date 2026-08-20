@@ -4,7 +4,7 @@ Next.js forum only. Org `necroticlab`, project `investagent` (id `45119413566832
 
 ## Capture
 
-`@sentry/nextjs` inits in `web/src/instrumentation-client.ts`, `web/src/sentry.server.config.ts`, and `web/src/sentry.edge.config.ts`. `web/src/instrumentation.ts` registers the server/edge SDK and `onRequestError`. `onRequestError` skips Next.js `The destination stream closed early.` (client aborted an RSC stream). Root layout crashes go through `web/src/app/global-error.tsx`. Client events tunnel via `/monitoring`. Empty DSN: SDK no-ops.
+`@sentry/nextjs` inits in `web/src/instrumentation-client.ts`, `web/src/sentry.server.config.ts`, and `web/src/sentry.edge.config.ts`. `web/src/instrumentation.ts` registers the server/edge SDK and `onRequestError`. `onRequestError` skips Next.js `The destination stream closed early.` (client aborted an RSC stream). The same deploy-transient strings live in `SENTRY_IGNORE_ERRORS` (`UnrecognizedActionError`, missing Server Action, poll `Failed to fetch` / `Load failed`, RSC abort, unexpected server response). Root layout crashes go through `web/src/app/global-error.tsx`. Client events tunnel via `/monitoring`. Empty DSN: SDK no-ops.
 
 No session replay. No logging SDK. No Python worker Sentry.
 
@@ -23,7 +23,9 @@ Web vars: `NEXT_PUBLIC_SENTRY_DSN` (same string as `SENTRY_DSN`), `SENTRY_ORG=ne
 
 ## Hotfix policy
 
-Staging is for finding bugs and features. Cursor Automation only cares about **new issues** on project `investagent`. Prompt-ignore `Sentry test error`, issue `JAVASCRIPT-NEXTJS-2`, and non-`production` environment. Environment is prompt-only: a development issue still starts a billed run, then should no-op.
+Staging is for finding bugs and features. Cursor Automation only cares about **new issues** on project `investagent`. Prompt-ignore `Sentry test error`, issue `JAVASCRIPT-NEXTJS-2` / `INVESTAGENT-2`, non-`production` environment, and deploy-transient poll/RSC noise (`UnrecognizedActionError`, missing Server Action, `Failed to fetch` / `Load failed`, stream closed early). Environment is prompt-only: a development issue still starts a billed run, then should no-op. Do not "fix" a missing Server Action by wrapping the poll in another hashed action — leftover tabs never get that JS, and the merge rotates hashes. Live polls are cookie GET `/api/live/*`.
+
+Live watcher: [Watch investagent production issues](https://cursor.com/automations/050b6596-9bb0-11f1-ba66-0e7d0216e441). Paste prompt changes there; this repo cannot edit the dashboard.
 
 ## Cursor Automation recipe
 
@@ -34,7 +36,7 @@ Create at [cursor.com/automations](https://cursor.com/automations). This repo ca
   "name": "Watch investagent production issues",
   "prompts": [
     {
-      "prompt": "fetch the issue; ignore Sentry test error / JAVASCRIPT-NEXTJS-2 and non-production environment; map frames under web/src; fix only if root cause is clear and 1–3 files; run ./scripts/verify.sh; open a draft PR linking the issue; otherwise comment on Sentry and stop; no replay, no Python SDK, no worker Sentry"
+      "prompt": "fetch the triggered issue with Sentry MCP; ignore Sentry test error / JAVASCRIPT-NEXTJS-2 / INVESTAGENT-2, non-production environment, UnrecognizedActionError / Failed to find Server Action (stale poll after deploy), Failed to fetch / Load failed from live polls, destination stream closed early, unexpected response from the server; do not patch live polls with another Server Action helper — those reads are cookie GET /api/live; map frames under web/src; fix only if root cause is a clear product bug in 1-3 files; run ./scripts/verify.sh; open a draft PR linking the issue; otherwise update_issue ignore forever (or resolve if already fixed) with a reason comment and stop; no replay, no Python SDK, no worker Sentry"
     }
   ],
   "model": "cursor-grok-4.6-high-fast",
@@ -65,7 +67,7 @@ Create at [cursor.com/automations](https://cursor.com/automations). This repo ca
 }
 ```
 
-Safer prompt wording if you expand it: use Sentry MCP on the **triggered** issue; open a **draft** PR, not ready for review.
+Safer prompt wording if you expand it: use Sentry MCP on the **triggered** issue; open a **draft** PR, not ready for review. After a no-fix ignore, call `update_issue` so the issue does not sit unresolved.
 
 Optional later: Sentry **Settings → Integrations → Cursor Agent** (Seer) and `SENTRY_AUTH_TOKEN` for readable minified frames.
 

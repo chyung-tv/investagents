@@ -1,8 +1,9 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { isStaleServerAction, startLivePoll } from "./live-poll";
+import { fetchLiveJson, isStaleServerAction, startLivePoll } from "./live-poll";
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 function unrecognizedAction() {
@@ -79,4 +80,53 @@ test("isStaleServerAction matches Next's missing-action error", () => {
   expect(isStaleServerAction(unrecognizedAction())).toBe(true);
   expect(isStaleServerAction(new TypeError("Failed to fetch"))).toBe(false);
   expect(isStaleServerAction("nope")).toBe(false);
+});
+
+test("fetchLiveJson returns JSON when the response is ok", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [{ id: "n1", href: "/t/1", label: "hi" }],
+    }),
+  );
+  await expect(fetchLiveJson("/api/live/inbox")).resolves.toEqual([
+    { id: "n1", href: "/t/1", label: "hi" },
+  ]);
+});
+
+test("fetchLiveJson 404 is not a stale server action", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: "Thread not found." }),
+    }),
+  );
+  const error = await fetchLiveJson("/api/live/threads/missing").then(
+    () => {
+      throw new Error("expected reject");
+    },
+    (reason: unknown) => reason,
+  );
+  expect(error).toBeInstanceOf(Error);
+  expect((error as Error).message).toBe("Live poll 404");
+  expect(isStaleServerAction(error)).toBe(false);
+});
+
+test("fetchLiveJson revives payloads and rejects junk", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "t1" }),
+    }),
+  );
+  await expect(
+    fetchLiveJson("/api/live/threads/t1", () => ({ id: "t1" })),
+  ).resolves.toEqual({ id: "t1" });
+  await expect(fetchLiveJson("/api/live/threads/t1", () => null)).rejects.toThrow(
+    "Live poll payload",
+  );
 });
