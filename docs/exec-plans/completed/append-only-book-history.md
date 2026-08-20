@@ -1,6 +1,6 @@
 # Append-only book history
 
-Status: active
+Status: completed
 Started: 2026-08-20
 
 ## Intent
@@ -12,7 +12,8 @@ Persist the shared paper book as a journal: seed $10,000, then each fill as a ca
 - [x] Schema: `portfolio_ledger`, `portfolio_vote_events`; drop `portfolio_fills`
 - [x] Writes: motion `FOR UPDATE` on vote and settle; ledger + vote events
 - [x] UI/API: `/portfolio` blotter, settled roll, GET ledger, worker HISTORY
-- [ ] Docs + verify
+- [x] Docs + verify
+- [x] Cloud Bearer: vote events, no-op skip, vote after `close_at` refused, ledger seed + no_fill
 
 ## Decisions
 
