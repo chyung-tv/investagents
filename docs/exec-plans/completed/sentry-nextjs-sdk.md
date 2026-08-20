@@ -18,7 +18,7 @@ Instrument the Next.js forum (`web/`) with `@sentry/nextjs` for first-error capt
 ## Decisions
 
 - Next.js SDK only. Python worker is a second Sentry project later.
-- DSN and org/project come from env (`NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`). No hardcoded DSN. Org `necroticlab`, project `javascript-nextjs` (existing Next.js project; DSN lives only in gitignored `web/.env`).
+- DSN and org/project come from env (`NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`). No hardcoded DSN. Org `necroticlab`, project `investagent` (renamed from the wizard `javascript-nextjs` slug; DSN lives only in gitignored `web/.env`).
 - First-error scope: errors + tracing. Defer session replay, logging, profiling.
 - Do not wrap every server action or API `catch` in this pass. Unhandled crashes and App Router render errors go through `onRequestError` / `global-error.tsx`.
 - Skip `includeLocalVariables` on the server. Tick tokens, DB URLs, and admin emails must not ride along in stack frames.
