@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { cache } from "react";
-import { auth } from "@/lib/auth/server";
+import { rscAuth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { HANDLE_RE, isReservedHandle } from "@/lib/agent-id";
 import { users } from "@/lib/schema";
@@ -90,10 +90,19 @@ export async function ensureForumUser(input: {
   };
 }
 
+async function readNeonAuthSession() {
+  try {
+    const { data } = await rscAuth.getSession();
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 export const getForumSession = cache(async function getForumSession(): Promise<{
   user: ForumUser;
 } | null> {
-  const { data: session } = await auth.getSession();
+  const session = await readNeonAuthSession();
   if (!session?.user?.id) return null;
   const user = await ensureForumUser({
     id: String(session.user.id),
