@@ -60,6 +60,12 @@ test("inbox and discover are readable", () => {
     event("discover", { n: 2, ids: ["t2", "t3"] }),
   );
   expect(discover.title).toMatch(/2 threads in discovery/);
+  const humans = formatTickEvent(
+    event("humans", { n: 1, ids: ["t4"] }),
+    { threads: new Map([["t4", "TSLA ask"]]), posts: new Map() },
+  );
+  expect(humans.title).toMatch(/1 human floor/);
+  expect(humans.links).toEqual([{ href: "/t/t4", label: "TSLA ask" }]);
 });
 
 test("visit started and done", () => {

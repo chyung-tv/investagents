@@ -22,12 +22,20 @@ import {
 } from "./forum";
 import { markFollowedSeen } from "./forum-write";
 import {
+  DISCOVER_HUMAN_RESERVE,
   DISCOVER_POOL,
   DISCOVER_SAMPLE,
+  HUMAN_FLOOR_SNIPPET,
+  HUMAN_FLOORS_LIMIT,
+  HUMAN_LOOKBACK_DAYS,
   INBOX_LIMIT,
   BODY_SNIPPET,
-  sampleDiscover,
+  latestPerThread,
+  rankHumanFloors,
+  sampleDiscoverStratified,
   snippet,
+  sortInboxByHumanUnread,
+  type HumanFloor,
   type InboxItem,
 } from "./inbox";
 
@@ -252,7 +260,7 @@ export async function getThread(
   };
 }
 
-export type { InboxItem };
+export type { HumanFloor, InboxItem };
 
 export async function listInbox(
   userId: string,
@@ -263,6 +271,7 @@ export async function listInbox(
       threadId: agentThreadReads.threadId,
       title: threads.title,
       lastSeenAt: agentThreadReads.lastSeenAt,
+      lastActivityAt: threads.lastActivityAt,
     })
     .from(agentThreadReads)
     .innerJoin(threads, eq(threads.id, agentThreadReads.threadId))
@@ -273,8 +282,7 @@ export async function listInbox(
         gt(threads.lastActivityAt, agentThreadReads.lastSeenAt),
       ),
     )
-    .orderBy(desc(threads.lastActivityAt))
-    .limit(limit);
+    .orderBy(desc(threads.lastActivityAt));
   if (followed.length === 0) return [];
 
   const ids = followed.map((row) => row.threadId);
@@ -284,6 +292,7 @@ export async function listInbox(
       body: posts.body,
       createdAt: posts.createdAt,
       handle: users.handle,
+      authorKind: users.kind,
     })
     .from(posts)
     .innerJoin(users, eq(users.id, posts.authorId))
@@ -305,7 +314,7 @@ export async function listInbox(
 
   const latest = new Map<
     string,
-    { handle: string | null; body: string; n: number }
+    { handle: string | null; body: string; n: number; kind: string }
   >();
   for (const row of unreadRows) {
     const current = latest.get(row.threadId);
@@ -314,26 +323,106 @@ export async function listInbox(
         handle: row.handle,
         body: row.body,
         n: 1,
+        kind: row.authorKind,
       });
     } else {
       current.n += 1;
     }
   }
 
-  const items: InboxItem[] = [];
-  for (const row of followed) {
-    const extra = latest.get(row.threadId);
-    if (!extra) continue;
-    items.push({
-      threadId: row.threadId,
-      title: row.title,
-      unreadCount: extra.n,
-      latestHandle: extra.handle,
-      latestBodySnippet: snippet(extra.body, BODY_SNIPPET),
-    });
-    if (items.length >= limit) break;
+  const ranked = sortInboxByHumanUnread(
+    followed.flatMap((row) => {
+      const extra = latest.get(row.threadId);
+      if (!extra) return [];
+      return [
+        {
+          threadId: row.threadId,
+          title: row.title,
+          unreadCount: extra.n,
+          latestHandle: extra.handle,
+          latestBodySnippet: snippet(extra.body, BODY_SNIPPET),
+          latestAuthorKind: extra.kind,
+          lastActivityAt: row.lastActivityAt,
+        },
+      ];
+    }),
+  );
+  return ranked.slice(0, limit).map((row) => ({
+    threadId: row.threadId,
+    title: row.title,
+    unreadCount: row.unreadCount,
+    latestHandle: row.latestHandle,
+    latestBodySnippet: row.latestBodySnippet,
+  }));
+}
+
+export async function listHumanFloors(
+  userId: string,
+  limit = HUMAN_FLOORS_LIMIT,
+): Promise<HumanFloor[]> {
+  const recentHuman = await db
+    .select({
+      postId: posts.id,
+      threadId: posts.threadId,
+      body: posts.body,
+      createdAt: posts.createdAt,
+      handle: users.handle,
+      title: threads.title,
+      board: threads.board,
+      ticker: threads.ticker,
+    })
+    .from(posts)
+    .innerJoin(users, eq(users.id, posts.authorId))
+    .innerJoin(threads, eq(threads.id, posts.threadId))
+    .where(
+      and(
+        eq(users.kind, "human"),
+        ne(posts.authorId, userId),
+        sql`${posts.createdAt} > now() - (${HUMAN_LOOKBACK_DAYS} * interval '1 day')`,
+      ),
+    )
+    .orderBy(desc(posts.createdAt));
+  const latest = latestPerThread(recentHuman);
+  if (latest.length === 0) return [];
+
+  const threadIds = latest.map((row) => row.threadId);
+  const agentReplies = await db
+    .select({
+      threadId: posts.threadId,
+      createdAt: posts.createdAt,
+    })
+    .from(posts)
+    .innerJoin(users, eq(users.id, posts.authorId))
+    .where(and(inArray(posts.threadId, threadIds), eq(users.kind, "agent")));
+
+  const laterAgent = new Map<string, Date>();
+  for (const row of agentReplies) {
+    const current = laterAgent.get(row.threadId);
+    if (!current || row.createdAt.getTime() > current.getTime()) {
+      laterAgent.set(row.threadId, row.createdAt);
+    }
   }
-  return items;
+
+  const ranked = rankHumanFloors(
+    latest.map((row) => {
+      const lastAgent = laterAgent.get(row.threadId);
+      return {
+        ...row,
+        unanswered: !lastAgent || lastAgent.getTime() <= row.createdAt.getTime(),
+      };
+    }),
+    limit,
+  );
+  return ranked.map((row) => ({
+    threadId: row.threadId,
+    postId: row.postId,
+    handle: row.handle,
+    title: row.title,
+    board: row.board,
+    ticker: row.ticker,
+    bodySnippet: snippet(row.body, HUMAN_FLOOR_SNIPPET),
+    unanswered: row.unanswered,
+  }));
 }
 
 export type DiscoverThread = {
@@ -342,12 +431,73 @@ export type DiscoverThread = {
   board: string;
   ticker: string | null;
   lastActivityAt: Date;
+  openerKind: string;
+  latestHandle: string | null;
+  latestAuthorKind: string | null;
+  latestBodySnippet: string;
 };
+
+async function latestFloorsByThread(
+  threadIds: string[],
+): Promise<Map<string, { handle: string | null; kind: string; body: string }>> {
+  const latest = new Map<
+    string,
+    { handle: string | null; kind: string; body: string }
+  >();
+  if (threadIds.length === 0) return latest;
+  const rows = await db
+    .select({
+      threadId: posts.threadId,
+      handle: users.handle,
+      kind: users.kind,
+      body: posts.body,
+      createdAt: posts.createdAt,
+    })
+    .from(posts)
+    .innerJoin(users, eq(users.id, posts.authorId))
+    .where(inArray(posts.threadId, threadIds))
+    .orderBy(desc(posts.createdAt));
+  for (const row of rows) {
+    if (latest.has(row.threadId)) continue;
+    latest.set(row.threadId, {
+      handle: row.handle,
+      kind: row.kind,
+      body: row.body,
+    });
+  }
+  return latest;
+}
+
+function withLatestFloor(
+  row: {
+    id: string;
+    title: string;
+    board: string;
+    ticker: string | null;
+    lastActivityAt: Date;
+    openerKind: string;
+  },
+  latest: Map<string, { handle: string | null; kind: string; body: string }>,
+): DiscoverThread {
+  const floor = latest.get(row.id);
+  return {
+    id: row.id,
+    title: row.title,
+    board: row.board,
+    ticker: row.ticker,
+    lastActivityAt: row.lastActivityAt,
+    openerKind: row.openerKind,
+    latestHandle: floor?.handle ?? null,
+    latestAuthorKind: floor?.kind ?? null,
+    latestBodySnippet: floor ? snippet(floor.body, BODY_SNIPPET) : "",
+  };
+}
 
 export async function listDiscoverThreads(
   userId: string,
   sample = DISCOVER_SAMPLE,
   pool = DISCOVER_POOL,
+  humanReserve = DISCOVER_HUMAN_RESERVE,
 ): Promise<DiscoverThread[]> {
   const followed = await db
     .select({ threadId: agentThreadReads.threadId })
@@ -359,6 +509,8 @@ export async function listDiscoverThreads(
       ),
     );
   const followedIds = followed.map((row) => row.threadId);
+  const unfollowed =
+    followedIds.length > 0 ? notInArray(threads.id, followedIds) : undefined;
   const recent = await db
     .select({
       id: threads.id,
@@ -366,12 +518,45 @@ export async function listDiscoverThreads(
       board: threads.board,
       ticker: threads.ticker,
       lastActivityAt: threads.lastActivityAt,
+      openerKind: users.kind,
     })
     .from(threads)
-    .where(followedIds.length > 0 ? notInArray(threads.id, followedIds) : undefined)
+    .innerJoin(users, eq(users.id, threads.authorId))
+    .where(unfollowed)
     .orderBy(desc(threads.lastActivityAt))
     .limit(pool);
-  return sampleDiscover(recent, sample);
+  const humanTouched = await db
+    .select({
+      id: threads.id,
+      title: threads.title,
+      board: threads.board,
+      ticker: threads.ticker,
+      lastActivityAt: threads.lastActivityAt,
+      openerKind: users.kind,
+    })
+    .from(threads)
+    .innerJoin(users, eq(users.id, threads.authorId))
+    .where(
+      and(
+        unfollowed,
+        sql`exists (
+          select 1 from posts p
+          inner join users u on u.id = p.author_id
+          where p.thread_id = ${threads.id}
+            and u.kind = 'human'
+            and p.created_at > now() - (${HUMAN_LOOKBACK_DAYS} * interval '1 day')
+        )`,
+      ),
+    )
+    .orderBy(desc(threads.lastActivityAt));
+  const picked = sampleDiscoverStratified(
+    recent,
+    humanTouched,
+    sample,
+    humanReserve,
+  );
+  const latest = await latestFloorsByThread(picked.map((row) => row.id));
+  return picked.map((row) => withLatestFloor(row, latest));
 }
 
 export async function listAgents() {

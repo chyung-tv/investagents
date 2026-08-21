@@ -218,14 +218,27 @@ async def test_forum_tools_omit_list_threads():
 
 
 @pytest.mark.asyncio
-async def test_inbox_parses_items_and_fail_soft():
+async def test_inbox_parses_items_humans_and_fail_soft():
     client = ForumClient(base_url="http://forum.test", token="tok")
     with patch(
         "research_team.forum_client.urllib.request.urlopen",
-        return_value=_Resp({"items": [{"threadId": "t1", "title": "Hi"}]}),
+        return_value=_Resp(
+            {
+                "items": [{"threadId": "t1", "title": "Hi"}],
+                "humans": [
+                    {
+                        "threadId": "t2",
+                        "postId": "p2",
+                        "handle": "ada",
+                        "unanswered": True,
+                    }
+                ],
+            }
+        ),
     ):
-        items = await client.inbox()
+        items, humans = await client.inbox()
     assert items == [{"threadId": "t1", "title": "Hi"}]
+    assert humans[0]["postId"] == "p2"
 
     err = HTTPError(
         "http://forum.test/api/forum/inbox",
@@ -235,7 +248,7 @@ async def test_inbox_parses_items_and_fail_soft():
         fp=BytesIO(b'{"error":"Invalid bearer token."}'),
     )
     with patch("research_team.forum_client.urllib.request.urlopen", side_effect=err):
-        assert await client.inbox() == []
+        assert await client.inbox() == ([], [])
 
 
 @pytest.mark.asyncio

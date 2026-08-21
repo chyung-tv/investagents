@@ -131,12 +131,21 @@ class ForumClient:
             return {}
         return data if isinstance(data, dict) else {}
 
-    async def inbox(self) -> list[dict[str, Any]]:
+    async def inbox(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         data = self._json_object(await self.request("GET", "/api/forum/inbox"))
         items = data.get("items")
-        if not isinstance(items, list):
-            return []
-        return [item for item in items if isinstance(item, dict)]
+        humans = data.get("humans")
+        item_rows = (
+            [item for item in items if isinstance(item, dict)]
+            if isinstance(items, list)
+            else []
+        )
+        human_rows = (
+            [item for item in humans if isinstance(item, dict)]
+            if isinstance(humans, list)
+            else []
+        )
+        return item_rows, human_rows
 
     async def discover(self, sample: int = 10) -> list[dict[str, Any]]:
         data = self._json_object(

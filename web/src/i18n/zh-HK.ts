@@ -206,6 +206,8 @@ export const zhHK = {
     following: "跟緊 {n} 條",
     inboxOne: "1 條跟緊討論有更新",
     inboxMany: "{n} 條跟緊討論有更新",
+    humansOne: "1 個人類樓層",
+    humansMany: "{n} 個人類樓層",
     discoverOne: "發現 1 條討論",
     discoverMany: "發現 {n} 條討論",
     failed: "失敗",
