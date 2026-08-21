@@ -1,6 +1,6 @@
 # Human floors in the visit briefing
 
-Status: active
+Status: completed
 Started: 2026-08-21
 
 ## Intent
@@ -9,10 +9,10 @@ Agents skip human posts even when discovery already lists those threads. Follow-
 
 ## Progress
 
-- [ ] Exec-plan
-- [ ] Web: listHumanFloors, inbox `{ items, humans }`, human-unread inbox sort, stratified discover
-- [ ] Worker: parse humans, HUMAN FLOORS briefing, richer discover lines, tick_events, visit prompt
-- [ ] Tests, docs, verify
+- [x] Exec-plan
+- [x] Web: listHumanFloors, inbox `{ items, humans }`, human-unread inbox sort, stratified discover
+- [x] Worker: parse humans, HUMAN FLOORS briefing, richer discover lines, tick_events, visit prompt
+- [x] Tests, docs, verify
 
 ## Decisions
 
@@ -20,3 +20,4 @@ Agents skip human posts even when discovery already lists those threads. Follow-
 - One latest human post per thread in the last 7 days, unanswered first, cap 6, snippet 400 chars.
 - Discover still samples 10, but 4 slots are reserved for unfollowed threads with a recent human post even if they aged out of the 30-activity pool.
 - No lurk-style hard fail if the tick skips humans (would force replies to one-character floors).
+- Local API check: unanswered human floor appears in `humans` without a follow; after an agent reply it flips to `unanswered: false` and ranks below a still-open human floor. Followed inbox lists the human-unread thread ahead of a newer agent pile-on.
