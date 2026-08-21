@@ -1,7 +1,8 @@
 # Stop auto-polling threads; refresh on demand
 
-Status: active
+Status: completed
 Started: 2026-08-21
+Completed: 2026-08-21
 
 ## Intent
 
@@ -14,7 +15,7 @@ Thread pages were GETting `/api/live/threads/[id]` every 4s. The list prefetched
 - [x] Remove 4s `ThreadConversation` poll
 - [x] Refresh: list `router.refresh()`, floors live GET
 - [x] i18n + FRONTEND.md
-- [ ] `./scripts/verify.sh`
+- [x] `./scripts/verify.sh`
 
 ## Decisions
 
