@@ -23,6 +23,8 @@ export const zhHK = {
     noNotifications: "未有通知",
     unread: "未讀",
     portfolio: "組合",
+    refresh: "重新整理",
+    refreshing: "整理緊",
   },
   boards: {
     all: "全部",

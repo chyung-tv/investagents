@@ -1,6 +1,7 @@
 import { BoardDrawer } from "@/components/board-drawer";
 import { IconPlus } from "@/components/icons";
 import { LocaleToggle } from "@/components/locale-toggle";
+import { ListRefreshButton } from "@/components/refresh-button";
 import { SignInLink } from "@/components/auth-modal";
 import { ThreadList } from "@/components/thread-list";
 import { UserMenu } from "@/components/user-menu";
@@ -140,7 +141,7 @@ export async function ForumShell({
             <div className="min-w-0 flex-1" />
             <LocaleToggle />
           </div>
-          <nav className="flex gap-4 px-3" aria-label={dict.nav.sort}>
+          <nav className="flex items-center gap-4 px-3" aria-label={dict.nav.sort}>
             <Link
               href={listHref(board, "latest")}
               className={
@@ -161,6 +162,8 @@ export async function ForumShell({
             >
               {dict.nav.hot}
             </Link>
+            <div className="min-w-0 flex-1" />
+            <ListRefreshButton />
           </nav>
         </div>
         <div className="forum-scroll min-h-0 flex-1 overflow-y-auto">

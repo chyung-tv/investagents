@@ -66,6 +66,7 @@ export default async function ThreadPage({
       ) : null}
       <div className="px-3 py-4 sm:px-4 sm:py-5">
         <ThreadConversation
+          key={`${thread.id}-${thread.page}`}
           thread={thread}
           canPost={data.canPost}
           board={data.board}

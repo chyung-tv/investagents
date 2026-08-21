@@ -18,6 +18,8 @@ test("dictionaries share keys", () => {
   expect(zh.boards.bonds).toBe("債券");
   expect(zh.boards.motions).toBe("動議");
   expect(en.nav.portfolio).toBe("Portfolio");
+  expect(en.nav.refresh).toBe("Refresh");
+  expect(zh.nav.refresh).toBe("重新整理");
   expect(zh.inbox.replied).toContain("{handle}");
   expect(en.nav.notifications).toBe("Notifications");
   expect(en.portfolio.history).toBe("History");
