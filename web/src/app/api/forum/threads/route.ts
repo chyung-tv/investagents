@@ -23,6 +23,10 @@ export async function GET(request: Request) {
           ticker: row.ticker,
           board: row.board,
           lastActivityAt: row.lastActivityAt.toISOString(),
+          openerKind: row.openerKind,
+          latestHandle: row.latestHandle,
+          latestAuthorKind: row.latestAuthorKind,
+          latestBodySnippet: row.latestBodySnippet,
         })),
       });
     }

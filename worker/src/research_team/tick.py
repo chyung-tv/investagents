@@ -142,6 +142,26 @@ def _format_inbox(items: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def _format_humans(items: list[dict[str, Any]]) -> str:
+    if not items:
+        return "(none)"
+    lines: list[str] = []
+    for item in items:
+        tid = str(item.get("threadId") or "")
+        pid = str(item.get("postId") or "")
+        handle = str(item.get("handle") or "anon")
+        title = str(item.get("title") or "")[:80]
+        board = str(item.get("board") or "")
+        ticker = str(item.get("ticker") or "")
+        extra = board if not ticker else f"{board} {ticker}"
+        flag = "unanswered" if item.get("unanswered") else "has-agent-reply"
+        snippet = str(item.get("bodySnippet") or "").replace("\n", " ")[:400]
+        lines.append(
+            f"- {tid} post {pid} @{handle} {flag} [{extra}] {title} · {snippet}"
+        )
+    return "\n".join(lines)
+
+
 def _format_portfolio(data: dict[str, Any]) -> str:
     if not data:
         return "(none)"
@@ -214,7 +234,18 @@ def _format_discover(items: list[dict[str, Any]]) -> str:
         board = str(item.get("board") or "")
         ticker = str(item.get("ticker") or "")
         extra = board if not ticker else f"{board} {ticker}"
-        lines.append(f"- {tid} [{extra}] {title}")
+        handle = str(item.get("latestHandle") or "").strip()
+        kind = str(item.get("latestAuthorKind") or item.get("openerKind") or "").strip()
+        snippet = str(item.get("latestBodySnippet") or "").replace("\n", " ")[:80]
+        who = ""
+        if handle:
+            who = f" · @{handle}"
+            if kind:
+                who += f" ({kind})"
+        elif kind:
+            who = f" · {kind}"
+        tail = f"{who}: {snippet}" if snippet else who
+        lines.append(f"- {tid} [{extra}] {title}{tail}")
     return "\n".join(lines)
 
 
@@ -224,6 +255,7 @@ def visit_briefing(
     news: str,
     lurk_streak: int,
     inbox: str = "",
+    humans: str = "",
     discover: str = "",
     portfolio: str = "",
 ) -> str:
@@ -234,6 +266,7 @@ def visit_briefing(
     )
     return (
         f"PRIVATE NOTES (do not paste into a post):\n{memory or '(empty)'}\n\n"
+        f"HUMAN FLOORS:\n{humans or '(none)'}\n\n"
         f"FOLLOWING UPDATES:\n{inbox or '(none)'}\n\n"
         f"MARKET NEWS:\n{news or '(none)'}\n\n"
         f"DISCOVERY:\n{discover or '(none)'}\n\n"
@@ -283,13 +316,19 @@ async def run_tick(job: dict[str, Any]) -> None:
             "claimed",
             {"agentId": agent_id, "source": job_source(payload)},
         )
-        inbox_items = await forum.inbox()
+        inbox_items, human_items = await forum.inbox()
         inbox_ids = [
             str(item.get("threadId"))
             for item in inbox_items
             if isinstance(item.get("threadId"), str) and item.get("threadId")
         ]
         _emit(job["id"], "inbox", {"n": len(inbox_items), "ids": inbox_ids})
+        human_ids = [
+            str(item.get("threadId"))
+            for item in human_items
+            if isinstance(item.get("threadId"), str) and item.get("threadId")
+        ]
+        _emit(job["id"], "humans", {"n": len(human_items), "ids": human_ids})
         news = await _await_step("news", fetch_market_news(), timeout=MCP_TIMEOUT_S)
         _emit(job["id"], "news", {"chars": len(news), "text": _clip(news)})
         discover_items = await forum.discover()
@@ -332,6 +371,7 @@ async def run_tick(job: dict[str, Any]) -> None:
                     news=news,
                     lurk_streak=streak,
                     inbox=_format_inbox(inbox_items),
+                    humans=_format_humans(human_items),
                     discover=_format_discover(discover_items),
                     portfolio=_format_portfolio(book),
                 ),

@@ -29,6 +29,7 @@ export const PIPELINE_STEPS = [
   "queued",
   "claimed",
   "inbox",
+  "humans",
   "news",
   "discover",
   "portfolio",
@@ -140,7 +141,7 @@ export function pipelineStage(tick: AgentTickRow): PipelineStep {
     if (tick.doneAt) return "failed";
   }
   if (!tick.doneAt && !tick.lockedAt) return "queued";
-  const order = ["claimed", "inbox", "news", "discover", "visit", "memory", "seen", "sleep"] as const;
+  const order = ["claimed", "inbox", "humans", "news", "discover", "visit", "memory", "seen", "sleep"] as const;
   let current: PipelineStep = tick.lockedAt && !tick.doneAt ? "claimed" : "queued";
   for (const event of tick.events) {
     if (event.step === "failed") return "failed";
@@ -179,6 +180,19 @@ export function formatTickEvent(
     const ids = asStringList(detail.ids);
     const n = asNumber(detail.n) ?? ids.length;
     title = countWord(n, dict.tick.inboxOne, dict.tick.inboxMany);
+    const seen = new Set<string>();
+    for (const id of ids) {
+      const href = `/t/${id}`;
+      if (seen.has(href)) continue;
+      seen.add(href);
+      links.push({ href, label: lookup.threads.get(id) ?? id.slice(0, 8) });
+    }
+    used = ["n", "ids"];
+    tone = "ok";
+  } else if (event.step === "humans") {
+    const ids = asStringList(detail.ids);
+    const n = asNumber(detail.n) ?? ids.length;
+    title = countWord(n, dict.tick.humansOne, dict.tick.humansMany);
     const seen = new Set<string>();
     for (const id of ids) {
       const href = `/t/${id}`;

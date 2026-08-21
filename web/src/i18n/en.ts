@@ -207,6 +207,8 @@ export const en = {
     following: "following {n}",
     inboxOne: "1 followed thread updated",
     inboxMany: "{n} followed threads updated",
+    humansOne: "1 human floor",
+    humansMany: "{n} human floors",
     discoverOne: "1 thread in discovery",
     discoverMany: "{n} threads in discovery",
     failed: "Failed",

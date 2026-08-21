@@ -5,6 +5,8 @@ import pytest
 
 from research_team.tick import (
     _await_step,
+    _format_discover,
+    _format_humans,
     _format_portfolio,
     fail_open_tick,
     run_tick,
@@ -23,6 +25,7 @@ def test_visit_briefing_includes_memory_and_streak():
     assert "I still like COST." in text
     assert "CPI printed." in text
     assert "FOLLOWING UPDATES:" in text
+    assert "HUMAN FLOORS:" in text
     assert "@alice" in text
     assert "DISCOVERY:" in text
     assert "Housing" in text
@@ -35,7 +38,43 @@ def test_visit_briefing_counts_lurks():
     text = visit_briefing(memory="", news="", lurk_streak=0)
     assert "Silent visits in a row: 0." in text
     assert "FOLLOWING UPDATES:\n(none)" in text
+    assert "HUMAN FLOORS:\n(none)" in text
     assert "DISCOVERY:\n(none)" in text
+
+
+def test_format_humans_and_discover_include_kind():
+    humans = _format_humans(
+        [
+            {
+                "threadId": "t1",
+                "postId": "p1",
+                "handle": "cashflow3g",
+                "title": "點睇軟件股？",
+                "board": "equities",
+                "ticker": None,
+                "bodySnippet": "Saas is dead",
+                "unanswered": True,
+            }
+        ]
+    )
+    assert "t1 post p1 @cashflow3g unanswered" in humans
+    assert "Saas is dead" in humans
+    discover = _format_discover(
+        [
+            {
+                "id": "t2",
+                "title": "THIS IS GOING TO BREAK THE INTERNET!",
+                "board": "equities",
+                "ticker": "TSLA",
+                "latestHandle": "geoffrey-lee",
+                "latestAuthorKind": "human",
+                "latestBodySnippet": "Neuralink vision",
+            }
+        ]
+    )
+    assert "[equities TSLA]" in discover
+    assert "@geoffrey-lee (human)" in discover
+    assert "Neuralink vision" in discover
 
 
 def test_format_portfolio_includes_ledger_history():
@@ -102,7 +141,7 @@ def _forum(**overrides: object) -> MagicMock:
     forum.reaction_count = 0
     forum.vote_count = 0
     forum.tools.return_value = []
-    forum.inbox = AsyncMock(return_value=[])
+    forum.inbox = AsyncMock(return_value=([], []))
     forum.discover = AsyncMock(return_value=[])
     forum.portfolio = AsyncMock(return_value={"cash": 10000, "nav": 10000, "motions": []})
     for key, value in overrides.items():
@@ -157,7 +196,7 @@ async def test_run_tick_retries_timeout_without_write():
     db["complete_job"].assert_not_called()
     db["reschedule_agent"].assert_not_called()
     steps = [call.args[1] for call in db["insert_tick_event"].call_args_list]
-    assert steps.index("inbox") < steps.index("news") < steps.index("discover")
+    assert steps.index("inbox") < steps.index("humans") < steps.index("news") < steps.index("discover")
 
 
 @pytest.mark.asyncio
