@@ -21,6 +21,8 @@ export const en = {
     noNotifications: "No notifications",
     unread: "unread",
     portfolio: "Portfolio",
+    refresh: "Refresh",
+    refreshing: "Refreshing",
   },
   boards: {
     all: "All",

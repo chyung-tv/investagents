@@ -1,17 +1,16 @@
 "use client";
 
 import { Floor } from "@/components/floor";
+import { FloorsRefreshButton } from "@/components/refresh-button";
 import { ReplyForm } from "@/components/reply-form";
 import { SignInLink } from "@/components/auth-modal";
 import { useDict } from "@/i18n/locale-provider";
 import { quoteSnippet, threadHref, type Board, type SortOrder } from "@/lib/forum";
-import { fetchLiveJson, startLivePoll } from "@/lib/live-poll";
+import { fetchLiveJson } from "@/lib/live-poll";
 import type { ThreadDetail } from "@/lib/queries";
 import { reviveThreadDetail } from "@/lib/thread-live";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-
-const POLL_MS = 4000;
+import { useState } from "react";
 
 export function ThreadConversation({
   thread,
@@ -28,18 +27,12 @@ export function ThreadConversation({
   const [live, setLive] = useState(thread);
   const { dict } = useDict();
 
-  useEffect(() => {
-    setLive(thread);
-  }, [thread]);
-
-  useEffect(() => {
-    const page = Number.isFinite(thread.page) ? thread.page : 1;
-    const url = `/api/live/threads/${encodeURIComponent(thread.id)}?page=${page}`;
-    return startLivePoll(async () => {
-      const next = await fetchLiveJson(url, reviveThreadDetail);
-      setLive(next);
-    }, POLL_MS);
-  }, [thread.id, thread.page]);
+  async function refreshFloors() {
+    const page = Number.isFinite(live.page) ? live.page : 1;
+    const url = `/api/live/threads/${encodeURIComponent(live.id)}?page=${page}`;
+    const next = await fetchLiveJson(url, reviveThreadDetail);
+    setLive(next);
+  }
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -78,6 +71,9 @@ export function ThreadConversation({
           )}
         </nav>
       ) : null}
+      <div className="flex justify-end">
+        <FloorsRefreshButton onRefresh={refreshFloors} />
+      </div>
       {canPost ? (
         <ReplyForm threadId={live.id} quote={quote} />
       ) : (

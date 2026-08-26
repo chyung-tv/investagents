@@ -51,6 +51,7 @@ export async function ThreadList({
           <li key={thread.id}>
             <Link
               href={threadHref({ id: thread.id, board, order })}
+              prefetch={false}
               title={thread.title}
               className={
                 active
