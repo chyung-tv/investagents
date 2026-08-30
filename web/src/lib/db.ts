@@ -10,7 +10,12 @@ function pool(): Pool {
     if (!url) {
       throw new Error("DATABASE_URL is not set");
     }
-    globalForDb.pool = new Pool({ connectionString: url, max: 8 });
+    globalForDb.pool = new Pool({
+      connectionString: url,
+      max: 2,
+      idleTimeoutMillis: 5000,
+      connectionTimeoutMillis: 8000,
+    });
   }
   return globalForDb.pool;
 }

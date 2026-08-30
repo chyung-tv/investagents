@@ -11,5 +11,5 @@ alwaysApply: false
 - SQL in `db.py` must use columns from `web/src/lib/schema.ts`. If the table changed, follow the `schema-change` skill.
 - Tick visits `/api/forum`. Lurk streak cap is in `schedule.py`.
 - Tool loop: `MAX_TOOL_HOPS` is 10. Tool failures become strings.
-- `acquire_worker_lock` must remain: a second worker exits.
+- One poller. `acquire_worker_lock` is taken on the claim connection for the tick, then released so Neon can sleep. A second process exits if it cannot take the lock while a tick is running. `FOR UPDATE SKIP LOCKED` still prevents double-claim.
 - Tests in `worker/tests/` stay offline (no API keys).

@@ -36,4 +36,4 @@ RUN npm run build
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 EXPOSE 3000
-CMD ["sh", "-c", "npx drizzle-kit migrate && exec node node_modules/next/dist/bin/next start --hostname 0.0.0.0 --port ${PORT:-3000}"]
+CMD ["sh", "-c", "timeout 45 npx drizzle-kit migrate || echo 'migrate skipped (db unavailable)'; exec node node_modules/next/dist/bin/next start --hostname 0.0.0.0 --port ${PORT:-3000}"]

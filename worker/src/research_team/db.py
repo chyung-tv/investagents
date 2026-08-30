@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime
+from contextvars import ContextVar
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -12,7 +13,7 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Json
 
-from research_team.config import require_env
+from research_team.config import idle_sleep_s, require_env
 
 CLAIM_SQL = """
 UPDATE jobs
@@ -33,35 +34,88 @@ WHERE id = (
 RETURNING *
 """
 
+NEXT_JOB_SQL = """
+SELECT min(run_at) AS nxt
+FROM jobs
+WHERE done_at IS NULL AND kind = 'agent_tick'
+"""
 
 WORKER_LOCK_CLASS = 42
 WORKER_LOCK_ID = 7
 
+_conn: ContextVar[psycopg.Connection[Any] | None] = ContextVar(
+    "forum_worker_conn", default=None
+)
+
+
+def is_db_unavailable(exc: BaseException) -> bool:
+    """Neon quota, connect failures — retry, do not crash the process."""
+    if isinstance(exc, psycopg.OperationalError):
+        return True
+    text = str(exc).lower()
+    return any(
+        needle in text
+        for needle in (
+            "compute time quota",
+            "prepaid",
+            "connection refused",
+            "connection is bad",
+            "network is unreachable",
+        )
+    )
+
+
+def _connect_new() -> psycopg.Connection[Any]:
+    env = require_env()
+    return psycopg.connect(env["DATABASE_URL_UNPOOLED"], row_factory=dict_row)
+
 
 @contextmanager
 def connect() -> Iterator[psycopg.Connection[Any]]:
-    env = require_env()
-    with psycopg.connect(env["DATABASE_URL_UNPOOLED"], row_factory=dict_row) as conn:
+    existing = _conn.get()
+    if existing is not None and not existing.closed:
+        yield existing
+        return
+    with _connect_new() as conn:
         yield conn
 
 
-def acquire_worker_lock() -> psycopg.Connection[Any] | None:
-    """Hold a session advisory lock so a second worker cannot poll the same jobs."""
-    env = require_env()
-    conn = psycopg.connect(env["DATABASE_URL_UNPOOLED"], row_factory=dict_row)
+def _try_advisory_lock(conn: psycopg.Connection[Any]) -> bool:
     row = conn.execute(
         "SELECT pg_try_advisory_lock(%s, %s) AS ok",
         (WORKER_LOCK_CLASS, WORKER_LOCK_ID),
     ).fetchone()
     conn.commit()
-    if not row or not row["ok"]:
+    return bool(row and row["ok"])
+
+
+@contextmanager
+def worker_session() -> Iterator[bool]:
+    """Hold the advisory lock on one connection for a claim/tick, then close."""
+    conn = _connect_new()
+    token = _conn.set(conn)
+    try:
+        yield _try_advisory_lock(conn)
+    finally:
+        _conn.reset(token)
         conn.close()
-        return None
-    return conn
+
+
+def acquire_worker_lock() -> bool:
+    """Boot check: True if we could take the lock (released on return so Neon can sleep)."""
+    with _connect_new() as conn:
+        token = _conn.set(conn)
+        try:
+            if not _try_advisory_lock(conn):
+                return False
+            unlock_abandoned_jobs()
+            return True
+        finally:
+            _conn.reset(token)
 
 
 def unlock_abandoned_jobs() -> list[str]:
-    """This process is the only worker. Leftover locks are from a dead run."""
+    """Leftover locks are from a dead run."""
     with connect() as conn:
         rows = conn.execute(
             """
@@ -80,6 +134,22 @@ def claim_job() -> dict[str, Any] | None:
         row = conn.execute(CLAIM_SQL).fetchone()
         conn.commit()
         return dict(row) if row else None
+
+
+def next_wait_s(idle_s: float | None = None) -> float:
+    """Seconds to sleep until the next pending job, capped by idle_sleep_s."""
+    cap = idle_sleep_s() if idle_s is None else idle_s
+    with connect() as conn:
+        row = conn.execute(NEXT_JOB_SQL).fetchone()
+    nxt = row["nxt"] if row else None
+    if nxt is None:
+        return cap
+    if nxt.tzinfo is None:
+        nxt = nxt.replace(tzinfo=timezone.utc)
+    delay = (nxt - datetime.now(timezone.utc)).total_seconds()
+    if delay <= 0:
+        return min(2.0, cap)
+    return min(delay, cap)
 
 
 def complete_job(
@@ -209,39 +279,41 @@ def set_memory(user_id: str, content: str) -> None:
 
 
 def mark_seen(user_id: str, thread_ids: list[str]) -> None:
-    if not thread_ids:
+    ids = list(dict.fromkeys(thread_ids))
+    if not ids:
         return
     with connect() as conn:
-        for thread_id in thread_ids:
-            conn.execute(
-                """
-                INSERT INTO agent_thread_reads (user_id, thread_id, last_seen_at, following)
-                SELECT %s, %s, now(), false
-                WHERE EXISTS (SELECT 1 FROM threads WHERE id = %s)
-                ON CONFLICT (user_id, thread_id) DO UPDATE SET
-                  last_seen_at = now()
-                """,
-                (user_id, thread_id, thread_id),
-            )
+        conn.execute(
+            """
+            INSERT INTO agent_thread_reads (user_id, thread_id, last_seen_at, following)
+            SELECT %s, t.id, now(), false
+            FROM unnest(%s::text[]) AS t(id)
+            WHERE EXISTS (SELECT 1 FROM threads WHERE id = t.id)
+            ON CONFLICT (user_id, thread_id) DO UPDATE SET
+              last_seen_at = now()
+            """,
+            (user_id, ids),
+        )
         conn.commit()
 
 
 def follow_threads(user_id: str, thread_ids: list[str]) -> None:
-    if not thread_ids:
+    ids = list(dict.fromkeys(thread_ids))
+    if not ids:
         return
     with connect() as conn:
-        for thread_id in thread_ids:
-            conn.execute(
-                """
-                INSERT INTO agent_thread_reads (user_id, thread_id, last_seen_at, following)
-                SELECT %s, %s, now(), true
-                WHERE EXISTS (SELECT 1 FROM threads WHERE id = %s)
-                ON CONFLICT (user_id, thread_id) DO UPDATE SET
-                  following = true,
-                  last_seen_at = now()
-                """,
-                (user_id, thread_id, thread_id),
-            )
+        conn.execute(
+            """
+            INSERT INTO agent_thread_reads (user_id, thread_id, last_seen_at, following)
+            SELECT %s, t.id, now(), true
+            FROM unnest(%s::text[]) AS t(id)
+            WHERE EXISTS (SELECT 1 FROM threads WHERE id = t.id)
+            ON CONFLICT (user_id, thread_id) DO UPDATE SET
+              following = true,
+              last_seen_at = now()
+            """,
+            (user_id, ids),
+        )
         conn.commit()
 
 

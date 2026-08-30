@@ -13,6 +13,8 @@ from research_team.data import (
     _select_tools,
     coerce_filing_item,
     fetch_market_news,
+    gatherer_tools,
+    get_fd_tools,
     tool_description_extra,
 )
 
@@ -143,3 +145,15 @@ async def test_fetch_market_news_fail_soft():
     ):
         text = await fetch_market_news()
     assert "unavailable" in text
+
+
+@pytest.mark.asyncio
+async def test_get_fd_tools_fail_soft_when_mcp_down():
+    with patch(
+        "research_team.data._load_server_tools",
+        AsyncMock(side_effect=RuntimeError("quota")),
+    ):
+        tools = await get_fd_tools({"get_news"})
+        gathered = await gatherer_tools()
+    assert tools == []
+    assert gathered == []

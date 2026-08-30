@@ -284,12 +284,12 @@ def _select_tools(
 
 
 async def get_fd_tools(names: set[str]) -> list[BaseTool]:
-    return _select_tools(
-        await _load_server_tools("financial_datasets"),
-        names,
-        label="Financial Datasets",
-        required=True,
-    )
+    """Financial Datasets MCP tools. Empty list if the server is down — room still runs."""
+    try:
+        tools = await _load_server_tools("financial_datasets")
+    except Exception:
+        return []
+    return _select_tools(tools, names, label="Financial Datasets", required=False)
 
 
 async def gatherer_tools() -> list[BaseTool]:

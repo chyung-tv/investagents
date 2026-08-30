@@ -1,6 +1,7 @@
 "use client";
 
 import { useDict } from "@/i18n/locale-provider";
+import { refreshThreadListAction } from "@/app/actions";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
 
@@ -35,7 +36,11 @@ export function ListRefreshButton() {
   return (
     <RefreshButton
       pending={pending}
-      onRefresh={() => startTransition(() => router.refresh())}
+      onRefresh={() =>
+        startTransition(() => {
+          void refreshThreadListAction().then(() => router.refresh());
+        })
+      }
     >
       {pending ? dict.nav.refreshing : dict.nav.refresh}
     </RefreshButton>

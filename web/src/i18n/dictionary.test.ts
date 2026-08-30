@@ -24,6 +24,8 @@ test("dictionaries share keys", () => {
   expect(en.nav.notifications).toBe("Notifications");
   expect(en.portfolio.history).toBe("History");
   expect(zh.portfolio.roll).toBe("計入嘅選票");
+  expect(en.thread.dbDown).toContain("cached");
+  expect(zh.thread.dbDown).toContain("快取");
 });
 
 test("fill substitutes placeholders", () => {

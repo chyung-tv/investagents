@@ -3,6 +3,7 @@ import { en } from "@/i18n/en";
 import { zhHK } from "@/i18n/zh-HK";
 import {
   formatInboxLabel,
+  HUMAN_FLOOR_SCAN,
   latestPerThread,
   rankHumanFloors,
   sampleDiscover,
@@ -10,6 +11,10 @@ import {
   snippet,
   sortInboxByHumanUnread,
 } from "./inbox";
+
+test("human-floor scan is capped before JS rank", () => {
+  expect(HUMAN_FLOOR_SCAN).toBe(50);
+});
 
 test("snippet trims and ellipsizes", () => {
   expect(snippet("  hello   world  ", 20)).toBe("hello world");

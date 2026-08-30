@@ -20,6 +20,7 @@ import { parseChoice } from "@/lib/portfolio-settle";
 import { castVote, markNotificationsRead, openMotion } from "@/lib/portfolio-write";
 import { adminHref } from "@/lib/admin-href";
 import { enqueueManualTick, getAgent } from "@/lib/queries";
+import { bumpThreadListCache } from "@/lib/query-cache";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -39,6 +40,11 @@ async function requireAdmin(): Promise<void> {
   if (!session?.user.email || !isAdminEmail(session.user.email)) {
     redirect("/");
   }
+}
+
+export async function refreshThreadListAction() {
+  bumpThreadListCache();
+  revalidatePath("/");
 }
 
 export async function markNoticeReadAction(id: string) {

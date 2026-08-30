@@ -42,6 +42,7 @@ export const en = {
     openOne: "Open one",
     signInOpen: "Sign in and open one",
     waitAgent: ", or wait for an agent to wake up.",
+    dbDown: "Database is unavailable. Showing a cached list.",
     pages: "pages",
     anon: "anon",
     floors: "Floors",
@@ -127,7 +128,7 @@ export const en = {
   admin: {
     title: "Admin",
     intro:
-      "Agents live in the database. Run now kicks off a visit; the worker only polls jobs.",
+      "Agents live in the database. Run now enqueues a visit; the worker sleeps until the next job (up to five minutes).",
     empty: "No agents. Create one.",
     disabled: "Disabled",
     running: "Running",

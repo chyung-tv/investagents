@@ -21,12 +21,19 @@ import {
   type SortOrder,
 } from "./forum";
 import { markFollowedSeen } from "./forum-write";
+import { isDbUnavailable } from "./db-unavailable";
+import {
+  getCached,
+  peekCached,
+  setCached,
+} from "./query-cache";
 import {
   DISCOVER_HUMAN_RESERVE,
   DISCOVER_POOL,
   DISCOVER_SAMPLE,
   HUMAN_FLOOR_SNIPPET,
   HUMAN_FLOORS_LIMIT,
+  HUMAN_FLOOR_SCAN,
   HUMAN_LOOKBACK_DAYS,
   INBOX_LIMIT,
   BODY_SNIPPET,
@@ -52,6 +59,8 @@ export type ThreadListItem = {
   authorName: string | null;
 };
 
+export const THREAD_LIST_LIMIT = 80;
+
 export async function listThreads(opts?: {
   board?: Board | null;
   order?: SortOrder;
@@ -59,43 +68,7 @@ export async function listThreads(opts?: {
   const board = opts?.board ?? null;
   const order = opts?.order ?? "latest";
 
-  const replyCount = db
-    .select({
-      threadId: posts.threadId,
-      n: count(posts.id).as("reply_n"),
-    })
-    .from(posts)
-    .groupBy(posts.threadId)
-    .as("reply_count");
-
-  const recentReplies = db
-    .select({
-      threadId: posts.threadId,
-      n: count(posts.id).as("recent_n"),
-    })
-    .from(posts)
-    .where(sql`${posts.createdAt} > now() - interval '24 hours'`)
-    .groupBy(posts.threadId)
-    .as("recent_replies");
-
-  const netLikes = db
-    .select({
-      threadId: posts.threadId,
-      net: sql<number>`coalesce(sum(case when ${postReactions.value} = 'up' then 1 when ${postReactions.value} = 'down' then -1 else 0 end), 0)`.as(
-        "net",
-      ),
-    })
-    .from(postReactions)
-    .innerJoin(posts, eq(postReactions.postId, posts.id))
-    .groupBy(posts.threadId)
-    .as("net_likes");
-
-  const hotScore = sql<number>`(
-    (coalesce("recent_replies"."recent_n", 0) * 2 + coalesce("net_likes"."net", 0))::float
-    / (extract(epoch from (now() - ${threads.lastActivityAt})) / 3600.0 + 2)
-  )`.mapWith(Number);
-
-  const rows = await db
+  const candidates = await db
     .select({
       id: threads.id,
       title: threads.title,
@@ -105,31 +78,114 @@ export async function listThreads(opts?: {
       authorHandle: users.handle,
       authorKind: users.kind,
       authorName: users.name,
-      postCount: sql<number>`coalesce("reply_count"."reply_n", 0)`.mapWith(Number),
-      hotScore,
     })
     .from(threads)
     .innerJoin(users, eq(threads.authorId, users.id))
-    .leftJoin(replyCount, eq(replyCount.threadId, threads.id))
-    .leftJoin(recentReplies, eq(recentReplies.threadId, threads.id))
-    .leftJoin(netLikes, eq(netLikes.threadId, threads.id))
     .where(board ? eq(threads.board, board) : undefined)
-    .orderBy(
-      order === "hot" ? desc(hotScore) : desc(threads.lastActivityAt),
+    .orderBy(desc(threads.lastActivityAt))
+    .limit(THREAD_LIST_LIMIT);
+
+  if (candidates.length === 0) return [];
+  const ids = candidates.map((row) => row.id);
+
+  const countRows = await db
+    .select({
+      threadId: posts.threadId,
+      n: count(posts.id),
+    })
+    .from(posts)
+    .where(inArray(posts.threadId, ids))
+    .groupBy(posts.threadId);
+  const counts = new Map(
+    countRows.map((row) => [row.threadId, Number(row.n)]),
+  );
+
+  let ranked = candidates;
+  if (order === "hot") {
+    const recentRows = await db
+      .select({
+        threadId: posts.threadId,
+        n: count(posts.id),
+      })
+      .from(posts)
+      .where(
+        and(
+          inArray(posts.threadId, ids),
+          sql`${posts.createdAt} > now() - interval '24 hours'`,
+        ),
+      )
+      .groupBy(posts.threadId);
+    const recent = new Map(
+      recentRows.map((row) => [row.threadId, Number(row.n)]),
     );
 
-  return rows.map((row) => ({
-    id: row.id,
-    title: row.title,
-    ticker: row.ticker,
-    board: row.board,
-    lastActivityAt: row.lastActivityAt,
-    authorHandle: row.authorHandle,
-    authorKind: row.authorKind,
-    authorName: row.authorName,
-    totalFloors: row.postCount,
-    replyCount: Math.max(0, row.postCount - 1),
-  }));
+    const likeRows = await db
+      .select({
+        threadId: posts.threadId,
+        net: sql<number>`coalesce(sum(case when ${postReactions.value} = 'up' then 1 when ${postReactions.value} = 'down' then -1 else 0 end), 0)`.mapWith(
+          Number,
+        ),
+      })
+      .from(postReactions)
+      .innerJoin(posts, eq(postReactions.postId, posts.id))
+      .where(inArray(posts.threadId, ids))
+      .groupBy(posts.threadId);
+    const likes = new Map(
+      likeRows.map((row) => [row.threadId, Number(row.net)]),
+    );
+
+    const scored = candidates.map((row) => {
+      const hours = (Date.now() - row.lastActivityAt.getTime()) / 3_600_000;
+      const score =
+        ((recent.get(row.id) ?? 0) * 2 + (likes.get(row.id) ?? 0)) /
+        (hours + 2);
+      return { row, score };
+    });
+    scored.sort((a, b) => b.score - a.score);
+    ranked = scored.map((item) => item.row);
+  }
+
+  return ranked.map((row) => {
+    const postCount = counts.get(row.id) ?? 0;
+    return {
+      id: row.id,
+      title: row.title,
+      ticker: row.ticker,
+      board: row.board,
+      lastActivityAt: row.lastActivityAt,
+      authorHandle: row.authorHandle,
+      authorKind: row.authorKind,
+      authorName: row.authorName,
+      totalFloors: postCount,
+      replyCount: Math.max(0, postCount - 1),
+    };
+  });
+}
+
+function threadListKey(board: Board | null, order: SortOrder): string {
+  return `threads:${board ?? "all"}:${order}`;
+}
+
+export async function listThreadsCached(opts?: {
+  board?: Board | null;
+  order?: SortOrder;
+  fresh?: boolean;
+}): Promise<{ threads: ThreadListItem[]; dbDown: boolean }> {
+  const board = opts?.board ?? null;
+  const order = opts?.order ?? "latest";
+  const key = threadListKey(board, order);
+  if (!opts?.fresh) {
+    const hit = getCached<ThreadListItem[]>(key);
+    if (hit) return { threads: hit, dbDown: false };
+  }
+  try {
+    const threads = await listThreads({ board, order });
+    setCached(key, threads);
+    return { threads, dbDown: false };
+  } catch (err) {
+    if (!isDbUnavailable(err)) throw err;
+    return { threads: peekCached<ThreadListItem[]>(key) ?? [], dbDown: true };
+  }
 }
 
 export type ThreadPostItem = {
@@ -381,7 +437,8 @@ export async function listHumanFloors(
         sql`${posts.createdAt} > now() - (${HUMAN_LOOKBACK_DAYS} * interval '1 day')`,
       ),
     )
-    .orderBy(desc(posts.createdAt));
+    .orderBy(desc(posts.createdAt))
+    .limit(HUMAN_FLOOR_SCAN);
   const latest = latestPerThread(recentHuman);
   if (latest.length === 0) return [];
 
@@ -446,19 +503,17 @@ async function latestFloorsByThread(
   >();
   if (threadIds.length === 0) return latest;
   const rows = await db
-    .select({
+    .selectDistinctOn([posts.threadId], {
       threadId: posts.threadId,
       handle: users.handle,
       kind: users.kind,
       body: posts.body,
-      createdAt: posts.createdAt,
     })
     .from(posts)
     .innerJoin(users, eq(users.id, posts.authorId))
     .where(inArray(posts.threadId, threadIds))
-    .orderBy(desc(posts.createdAt));
+    .orderBy(posts.threadId, desc(posts.createdAt));
   for (const row of rows) {
-    if (latest.has(row.threadId)) continue;
     latest.set(row.threadId, {
       handle: row.handle,
       kind: row.kind,

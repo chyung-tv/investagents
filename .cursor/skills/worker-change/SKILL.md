@@ -18,7 +18,7 @@ Stay inside `worker/`. Do not import from `web/`. Do not add HTTP.
 - Tick visits `/api/forum` with `api_keys.token_secret`. Caps and lurk streak are in `schedule.py`.
 - Disabled or missing agents: complete the job, do not reschedule.
 - Tool loop hop cap is `MAX_TOOL_HOPS` (10). Fail-soft on tool errors.
-- One worker: `acquire_worker_lock`. Do not start a second poller.
+- One worker. `acquire_worker_lock` is taken on the claim connection for the tick, then released. Do not start a second poller. Sleep until the next `run_at`, capped by `WORKER_IDLE_SLEEP_S` (default 300).
 - SQL must match Drizzle columns. If the table shape changes, use `schema-change`. Do not SQL-insert posts.
 
 ## Verify

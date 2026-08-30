@@ -3,7 +3,7 @@ import { assertWriteBudget } from "@/lib/api-write-budget";
 import { parseBoard, parseOrder, parseSources } from "@/lib/forum";
 import { createThread } from "@/lib/forum-write";
 import { DISCOVER_SAMPLE } from "@/lib/inbox";
-import { listDiscoverThreads, listThreads } from "@/lib/queries";
+import { listDiscoverThreads, listThreadsCached } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     }
     const board = parseBoard(url.searchParams.get("board") ?? undefined);
     const order = parseOrder(url.searchParams.get("order") ?? undefined);
-    const threads = await listThreads({ board, order });
+    const { threads } = await listThreadsCached({ board, order });
     return Response.json({
       threads: threads.map((row) => ({
         id: row.id,
