@@ -3,7 +3,7 @@ import { getForumSession } from "@/lib/auth/session";
 import { loadAgentRunView } from "@/lib/agent-run";
 import { adminHref } from "@/lib/admin-href";
 import { getAgent, getAgentMemory, listAgents } from "@/lib/queries";
-import { signInRedirect } from "@/lib/auth-href";
+import { hasNeonAuthHandshake, signInRedirect } from "@/lib/auth-href";
 import { fill } from "@/i18n/dictionary";
 import { getMessages } from "@/i18n/get-locale";
 import { formatWhen } from "@/lib/tick-log";
@@ -19,14 +19,24 @@ export const dynamic = "force-dynamic";
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ agent?: string; created?: string; new?: string }>;
+  searchParams: Promise<{
+    agent?: string;
+    created?: string;
+    new?: string;
+    neon_auth_session_verifier?: string;
+  }>;
 }) {
+  const query = await searchParams;
   const session = await getForumSession();
-  if (!session?.user) redirect(signInRedirect("/admin"));
+  const { locale, dict } = await getMessages();
+  if (!session?.user) {
+    if (hasNeonAuthHandshake(query.neon_auth_session_verifier)) {
+      return <p className="text-sm text-muted">{dict.auth.signingIn}</p>;
+    }
+    redirect(signInRedirect("/admin"));
+  }
   if (!isAdminEmail(session.user.email)) redirect("/");
 
-  const query = await searchParams;
-  const { locale, dict } = await getMessages();
   const agents = await listAgents();
   const roster = await Promise.all(
     agents.map(async (agent) => {
