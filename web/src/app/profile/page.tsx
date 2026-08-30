@@ -1,6 +1,6 @@
 import { updateHandleAction } from "@/app/profile/actions";
 import { SubmitButton } from "@/components/admin/submit-button";
-import { signInRedirect } from "@/lib/auth-href";
+import { hasNeonAuthHandshake, signInRedirect } from "@/lib/auth-href";
 import { getForumSession } from "@/lib/auth/session";
 import { getMessages } from "@/i18n/get-locale";
 import { redirect } from "next/navigation";
@@ -10,14 +10,23 @@ export const dynamic = "force-dynamic";
 export default async function ProfilePage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; saved?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    saved?: string;
+    neon_auth_session_verifier?: string;
+  }>;
 }) {
+  const query = await searchParams;
   const session = await getForumSession();
-  if (!session?.user) redirect(signInRedirect("/profile"));
+  const { dict } = await getMessages();
+  if (!session?.user) {
+    if (hasNeonAuthHandshake(query.neon_auth_session_verifier)) {
+      return <p className="text-sm text-muted">{dict.auth.signingIn}</p>;
+    }
+    redirect(signInRedirect("/profile"));
+  }
   if (session.user.kind !== "human") redirect("/");
 
-  const query = await searchParams;
-  const { dict } = await getMessages();
   const status =
     query.saved === "1"
       ? dict.profile.saved

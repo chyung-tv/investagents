@@ -29,3 +29,7 @@ export function signInRedirect(next?: string): string {
   if (safe === "/") return "/?auth=signin";
   return `/?auth=signin&next=${encodeURIComponent(safe)}`;
 }
+
+export function hasNeonAuthHandshake(value: unknown): boolean {
+  return typeof value === "string" && value.length > 0;
+}

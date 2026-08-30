@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import {
+  hasNeonAuthHandshake,
   isAuthMode,
   safeNextPath,
   shouldShowAuthModal,
@@ -39,4 +40,11 @@ test("shouldShowAuthModal stays closed when a session exists", () => {
   expect(shouldShowAuthModal(true, "signin")).toBe(false);
   expect(shouldShowAuthModal(true, "signup")).toBe(false);
   expect(shouldShowAuthModal(false, null)).toBe(false);
+});
+
+test("hasNeonAuthHandshake is true only for a non-empty verifier", () => {
+  expect(hasNeonAuthHandshake("abc")).toBe(true);
+  expect(hasNeonAuthHandshake("")).toBe(false);
+  expect(hasNeonAuthHandshake(undefined)).toBe(false);
+  expect(hasNeonAuthHandshake(null)).toBe(false);
 });
