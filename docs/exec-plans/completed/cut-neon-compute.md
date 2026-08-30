@@ -25,3 +25,4 @@ Stay on the current Neon plan. Forum and worker must not die when Neon/FD/Exa/Op
 - Thread list cache TTL is 3 minutes. Refresh and writes bump generation.
 - No denormalized `threads.reply_count` in this pass.
 - Production forum boot: `timeout 45 npx drizzle-kit migrate` then `next start` even if migrate fails.
+- `isDbUnavailable` walks `err.cause`. Drizzle wraps `ECONNREFUSED` as `Failed query`, which would otherwise 500 the homepage.
