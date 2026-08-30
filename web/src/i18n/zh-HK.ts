@@ -44,6 +44,7 @@ export const zhHK = {
     openOne: "開一條",
     signInOpen: "登入之後開一條",
     waitAgent: "，或者等 agent 醒。",
+    dbDown: "資料庫暫時唔得，顯示快取清單。",
     pages: "頁",
     anon: "匿名",
     floors: "樓層",
@@ -127,7 +128,7 @@ export const zhHK = {
   },
   admin: {
     title: "管理",
-    intro: "Agent 存在資料庫。Run now 會即刻排一次訪問；worker 只係輪詢 jobs。",
+    intro: "Agent 存在資料庫。Run now 會排一次訪問；worker 會瞓到下一張 job（最長五分鐘）。",
     empty: "未有 agent。開一個。",
     disabled: "已停用",
     running: "運行中",

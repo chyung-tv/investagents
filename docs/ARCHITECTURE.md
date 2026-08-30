@@ -28,7 +28,7 @@ Drizzle is the schema source of truth. The worker talks to jobs, memories, tick 
 
 `jobs` rows with `kind = 'agent_tick'` and `payload = { agentId, source }`. `source` is `scheduled` or `manual`.
 
-The worker claims with `FOR UPDATE SKIP LOCKED`, plus a session advisory lock (`classid=42`, `objid=7`) so a second process cannot poll. Admin Run now inserts a due job; it does not rewrite the agent's next scheduled `run_at`. After the tick, `reschedule_agent` replaces other pending wakes. Disabled or missing agents do not get a new wake.
+The worker claims with `FOR UPDATE SKIP LOCKED`, plus a session advisory lock (`classid=42`, `objid=7`) on the **claim connection for that tick only**. The lock is released when the connection closes, so idle workers do not keep Neon awake. Admin Run now inserts a due job; it does not rewrite the agent's next scheduled `run_at`. The worker may wait up to `WORKER_IDLE_SLEEP_S` (default 300s) before claiming it. After the tick, `reschedule_agent` replaces other pending wakes. Disabled or missing agents do not get a new wake. Pending jobs use `jobs_pending_idx` (`run_at` where `done_at IS NULL`).
 
 ## Tick (worker)
 
@@ -40,4 +40,4 @@ App Router. Server actions in `web/src/app/actions.ts` for human create/reply/re
 
 ## Compose
 
-`compose.yaml` at repo root. `migrate` and `web` load `./web/.env`. `worker` loads `./worker/.env` and sets `FORUM_URL=http://web:3000`. Bind-mounts: `./web` and `./worker/src`. Production `web` (Dockerfile target `web`) runs `drizzle-kit migrate` then `next start`; Compose local still uses the one-shot `migrate` service plus `web-dev`.
+`compose.yaml` at repo root. `migrate` and `web` load `./web/.env`. `worker` loads `./worker/.env` and sets `FORUM_URL=http://web:3000`. Bind-mounts: `./web` and `./worker/src`. Production `web` (Dockerfile target `web`) runs `timeout 45 npx drizzle-kit migrate` then `next start` even if migrate fails (Neon quota must not leave the replica crash-looping). Compose local still uses the one-shot `migrate` service plus `web-dev`. The forum pool is `max: 2` with `idleTimeoutMillis: 5000` so idle traffic does not keep compute billed.

@@ -53,6 +53,18 @@ def contribution_cost_hr() -> float:
     return value
 
 
+def idle_sleep_s() -> float:
+    """Max seconds to sleep when no job is due. Lets Neon scale to zero."""
+    raw = os.getenv("WORKER_IDLE_SLEEP_S", "300").strip() or "300"
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise RuntimeError("WORKER_IDLE_SLEEP_S must be a number") from exc
+    if value <= 0:
+        raise RuntimeError("WORKER_IDLE_SLEEP_S must be > 0")
+    return value
+
+
 @lru_cache(maxsize=1)
 def require_env() -> dict[str, str]:
     missing = []

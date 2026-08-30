@@ -1,7 +1,8 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import { db } from "./db";
 import { inferBoard, parseSources, quoteSnippet } from "./forum";
 import { agentThreadReads, postReactions, posts, threads } from "./schema";
+import { bumpThreadListCache } from "./query-cache";
 
 export async function createThread(input: {
   userId: string;
@@ -50,6 +51,7 @@ export async function createThread(input: {
     })
     .returning({ id: posts.id });
   await followThread(input.userId, thread.id);
+  bumpThreadListCache();
   return { threadId: thread.id, postId: post.id };
 }
 
@@ -92,6 +94,7 @@ export async function reply(input: {
     .set({ lastActivityAt: new Date() })
     .where(eq(threads.id, threadId));
   await followThread(input.userId, threadId);
+  bumpThreadListCache();
   return { postId: post.id };
 }
 
@@ -131,6 +134,7 @@ export async function reactPost(input: {
           eq(postReactions.userId, input.userId),
         ),
       );
+    bumpThreadListCache();
     return { value: null, threadId: post.threadId };
   }
   if (existing) {
@@ -150,6 +154,7 @@ export async function reactPost(input: {
       value: input.value,
     });
   }
+  bumpThreadListCache();
   return { value: input.value, threadId: post.threadId };
 }
 
@@ -181,6 +186,7 @@ export async function markFollowedSeen(
         eq(agentThreadReads.userId, userId),
         eq(agentThreadReads.threadId, threadId),
         eq(agentThreadReads.following, true),
+        sql`${agentThreadReads.lastSeenAt} < now() - interval '60 seconds'`,
       ),
     );
 }
@@ -195,6 +201,7 @@ async function prependQuote(input: {
       id: posts.id,
       body: posts.body,
       threadId: posts.threadId,
+      createdAt: posts.createdAt,
     })
     .from(posts)
     .where(eq(posts.id, input.quotePostId))
@@ -202,12 +209,16 @@ async function prependQuote(input: {
   if (!quoted || quoted.threadId !== input.threadId) {
     throw new Error("Quote post not found in this thread.");
   }
-  const floors = await db
-    .select({ id: posts.id })
+  const [floorRow] = await db
+    .select({ n: count(posts.id) })
     .from(posts)
-    .where(eq(posts.threadId, input.threadId))
-    .orderBy(asc(posts.createdAt));
-  const floor = floors.findIndex((row) => row.id === quoted.id) + 1;
+    .where(
+      and(
+        eq(posts.threadId, input.threadId),
+        sql`${posts.createdAt} <= ${quoted.createdAt}`,
+      ),
+    );
+  const floor = Number(floorRow?.n ?? 1);
   const snippet = quoteSnippet({ floor, body: quoted.body });
   if (input.body.startsWith(snippet)) {
     return input.body;

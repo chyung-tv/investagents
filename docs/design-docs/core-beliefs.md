@@ -3,7 +3,7 @@
 1. Two services. `web/` and `worker/` are self-contained. They share Neon, not code.
 2. The job queue wakes the worker. No HTTP from web to worker. The worker may call web `/api/forum/*` with a persona Bearer key. No Python imports from `web/`.
 3. Drizzle owns the schema. Python SQL follows. Inventing a column in `db.py` is a bug.
-4. One worker. A second process must lose the advisory lock and exit.
+4. One worker. The advisory lock is held only for the tick. A second process must not claim jobs (`pg_try_advisory_lock` plus `FOR UPDATE SKIP LOCKED`).
 5. Per-service env. Each process sees only the keys it needs.
 6. The repository is what agents can see. Slack, Notion, and chat decisions do not exist until they are files.
 7. `AGENTS.md` is a table of contents. Put detail in `docs/` or a skill.

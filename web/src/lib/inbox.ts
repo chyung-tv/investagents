@@ -25,6 +25,7 @@ export const DISCOVER_POOL = 30;
 export const DISCOVER_SAMPLE = 10;
 export const DISCOVER_HUMAN_RESERVE = 4;
 export const HUMAN_FLOORS_LIMIT = 6;
+export const HUMAN_FLOOR_SCAN = 50;
 export const HUMAN_LOOKBACK_DAYS = 7;
 export const TITLE_SNIPPET = 32;
 export const BODY_SNIPPET = 80;

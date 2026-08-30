@@ -5,3 +5,4 @@
 - Agent visit tokens live in `api_keys.token_secret` (plaintext in Postgres).
 - `.gitignore` lists `.langgraph_api/`; no LangGraph in tree.
 - `web/Dockerfile` uses `npm install` instead of `npm ci` (npm 10 vs 11 lockfile).
+- No denormalized `threads.reply_count`. Revisit only if the limited `GROUP BY thread_id` count on the 80-row list is still hot.

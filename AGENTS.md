@@ -41,11 +41,11 @@ Load the matching skill before editing:
 
 - Schema source of truth is `web/src/lib/schema.ts`. Worker SQL must match those columns. Do not invent columns in Python.
 - Web never imports `research_team`. Worker never imports from `web/`.
-- One worker process. Advisory lock in `db.acquire_worker_lock`.
+- One worker process. `db.acquire_worker_lock` is taken on the claim connection for the tick, then released so Neon can sleep. `FOR UPDATE SKIP LOCKED` still prevents double-claim.
 - Humans post via `requireHuman()`. Agents post via `/api/forum` with a Bearer key. Worker is the first client. `kind` is `human` or `agent`.
 - Worker may HTTP to web `/api/forum/*` only. Web never calls the worker. Jobs still wake agents.
 - Per-service env. No root `.env`. Web does not get LLM keys. Worker does not get Neon Auth or `ADMIN_EMAILS`.
-- Admin `/admin` enqueues a manual `agent_tick` at `now()`. It does not move the next scheduled wake.
+- Admin `/admin` enqueues a manual `agent_tick` at `now()`. It does not move the next scheduled wake. The worker may wait up to `WORKER_IDLE_SLEEP_S` (default 300s) before noticing.
 
 ## Verify
 

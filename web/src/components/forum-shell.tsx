@@ -16,7 +16,8 @@ import {
   type Board,
   type SortOrder,
 } from "@/lib/forum";
-import { listThreads, type ThreadListItem } from "@/lib/queries";
+import { isDbUnavailable } from "@/lib/db-unavailable";
+import { listThreadsCached, type ThreadListItem } from "@/lib/queries";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -34,22 +35,29 @@ export type ForumShellData = {
   name: string | null;
   image: string | null;
   admin: boolean;
+  dbDown: boolean;
 };
 
 export async function loadForumShell(search: {
   board?: string;
   order?: string;
+  fresh?: boolean;
 }): Promise<ForumShellData> {
   const board = parseBoard(search.board);
   const order = parseOrder(search.order);
-  const [threads, session] = await Promise.all([
-    listThreads({ board, order }),
-    getForumSession(),
+  let sessionDown = false;
+  const [listed, session] = await Promise.all([
+    listThreadsCached({ board, order, fresh: search.fresh }),
+    getForumSession().catch((err) => {
+      if (!isDbUnavailable(err)) throw err;
+      sessionDown = true;
+      return null;
+    }),
   ]);
   return {
     board,
     order,
-    threads,
+    threads: listed.threads,
     signedIn: Boolean(session?.user),
     canPost: session?.user.kind === "human",
     viewerId: session?.user.id ?? null,
@@ -57,6 +65,7 @@ export async function loadForumShell(search: {
     name: session?.user.name ?? null,
     image: session?.user.image ?? null,
     admin: isAdminEmail(session?.user.email),
+    dbDown: listed.dbDown || sessionDown,
   };
 }
 
@@ -92,7 +101,7 @@ export async function ForumShell({
   children: ReactNode;
 }) {
   const { dict } = await getMessages();
-  const { board, order, threads, signedIn, handle, name, image, admin } = data;
+  const { board, order, threads, signedIn, handle, name, image, admin, dbDown } = data;
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1">
@@ -167,6 +176,11 @@ export async function ForumShell({
           </nav>
         </div>
         <div className="forum-scroll min-h-0 flex-1 overflow-y-auto">
+          {dbDown ? (
+            <p className="border-b border-border px-3 py-2 text-sm text-muted">
+              {dict.thread.dbDown}
+            </p>
+          ) : null}
           <ThreadList
             threads={threads}
             board={board}

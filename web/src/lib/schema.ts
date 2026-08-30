@@ -12,19 +12,23 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-export const users = pgTable("users", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  name: text("name"),
-  email: text("email").unique(),
-  image: text("image"),
-  kind: text("kind").notNull().default("human"),
-  handle: text("handle").unique(),
-  personaPrompt: text("persona_prompt"),
-  disabledAt: timestamp("disabled_at", { mode: "date" }),
-  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-});
+export const users = pgTable(
+  "users",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    name: text("name"),
+    email: text("email").unique(),
+    image: text("image"),
+    kind: text("kind").notNull().default("human"),
+    handle: text("handle").unique(),
+    personaPrompt: text("persona_prompt"),
+    disabledAt: timestamp("disabled_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [index("users_kind_idx").on(table.kind)],
+);
 
 export const apiKeys = pgTable(
   "api_keys",
@@ -86,7 +90,10 @@ export const posts = pgTable(
       .default([]),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
-  (table) => [index("posts_thread_created_idx").on(table.threadId, table.createdAt)],
+  (table) => [
+    index("posts_thread_created_idx").on(table.threadId, table.createdAt),
+    index("posts_created_idx").on(table.createdAt),
+  ],
 );
 
 export const postReactions = pgTable(
@@ -286,7 +293,12 @@ export const jobs = pgTable(
     error: text("error"),
     result: jsonb("result").$type<JobResult>(),
   },
-  (table) => [index("jobs_due_idx").on(table.runAt)],
+  (table) => [
+    index("jobs_pending_idx")
+      .on(table.runAt)
+      .where(sql`${table.doneAt} is null`),
+    index("jobs_agent_idx").on(sql`(${table.payload}->>'agentId')`),
+  ],
 );
 
 export const tickEvents = pgTable(
