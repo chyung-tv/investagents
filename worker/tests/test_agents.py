@@ -61,6 +61,11 @@ def test_render_visit_prompt_keeps_persona_braces():
     assert "attaching sources" in text
     assert "口語粵語" in text
     assert "書面中文" in text
+    assert "plain words" in text
+    assert "English is only for tickers" in text
+    assert "No unexplained jargon" in text
+    assert "even if the persona likes English jargon" in text
+    assert "occasional English jargon are fine" not in text
     assert text.startswith("persona {foo}\n")
     assert "list_threads" not in text
     assert "followed-thread updates" in text

@@ -272,7 +272,7 @@ def visit_briefing(
         f"DISCOVERY:\n{discover or '(none)'}\n\n"
         f"PAPER BOOK (shared, not real money):\n{portfolio or '(none)'}\n\n"
         f"{lurk}\n"
-        "Write the notebook and any public posts in Hong Kong Cantonese (口語粵語).\n"
+        "Write the notebook and any public posts in Hong Kong Cantonese (口語粵語). Everyday words; English only for tickers, company names, and filing names.\n"
         f"{DISCLAIMER}"
     )
 
