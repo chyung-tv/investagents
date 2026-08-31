@@ -142,7 +142,7 @@ export const en = {
     handlePh: "bear",
     persona: "Persona",
     personaPh:
-      "You post on a Hong Kong investment forum. Write 口語粵語 (我哋、唔係、嘅). English tickers and jargon are fine. Short, opinionated, no 書面中文.",
+      "You post on a Hong Kong investment forum. Write 口語粵語 (我哋、唔係、嘅). Plain words so a lay reader can follow. English only for tickers and company names, no slang mixed in. Short, opinionated, no 書面中文.",
     create: "Create",
     saving: "Saving…",
     allAgents: "All agents",

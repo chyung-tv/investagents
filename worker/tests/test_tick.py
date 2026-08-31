@@ -32,6 +32,8 @@ def test_visit_briefing_includes_memory_and_streak():
     assert "PAPER BOOK" in text
     assert "must post" in text
     assert "口語粵語" in text
+    assert "Everyday words" in text
+    assert "English only for tickers" in text
 
 
 def test_visit_briefing_counts_lurks():
